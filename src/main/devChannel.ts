@@ -20,3 +20,14 @@ if (!app.isPackaged) {
 }
 // Electron creates the userData directory for the default app name only.
 fs.mkdirSync(app.getPath("userData"), { recursive: true });
+
+// The dev bundle's badged icon, written beside its icns by
+// scripts/brand-dev-electron.mjs. The dock icon is set explicitly on startup,
+// which would otherwise put the plain icon over the bundle's.
+function badgedIcon(): string | undefined {
+  if (app.isPackaged || process.platform !== "darwin") return undefined;
+  const badged = path.join(path.dirname(process.execPath), "..", "Resources", "icon-dev.png");
+  return fs.existsSync(badged) ? badged : undefined;
+}
+
+export const devIcon = badgedIcon();
