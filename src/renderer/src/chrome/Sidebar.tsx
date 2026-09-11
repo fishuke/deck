@@ -1,8 +1,9 @@
 import { useEffect, useRef, useState } from "react";
 import { agentLabels, type Agent } from "../../../shared/agents.js";
 import type { AgentSession } from "../../../main/sessions.js";
-import { SessionIcon, statusLabels } from "./SessionIcon.js";
+import { SessionIcon, statusLabels, statusTones } from "./SessionIcon.js";
 import { SessionArchive } from "./SessionArchive.js";
+import { previewRows } from "./devPreviewRows.js";
 import { WorktreeSweep } from "./WorktreeSweep.js";
 import { useAgentSessions } from "../lib/useSessions.js";
 import { shortPath, useGitSummary } from "../lib/useGitSummary.js";
@@ -26,6 +27,8 @@ function SessionRow({ tab, session, index, onOpen }: { tab: TermTab; session?: A
   const title = tab.customTitle || session?.title || (tab.title === "shell" ? cwd?.split("/").pop() : tab.title) || "Terminal";
   const active = activeId === tab.termId;
   const waiting = session && ["needs_input", "needs_review"].includes(session.status);
+  const tone = session ? statusTones[session.status] : undefined;
+  const oscColor = tone ? undefined : tab.tabColor;
   return <div draggable={!renaming} onDragStart={(event) => { event.dataTransfer.setData("text/deck-tab", tab.termId); event.dataTransfer.effectAllowed = "move"; }}
     onDragOver={(event) => { if (event.dataTransfer.types.includes("text/deck-tab")) { event.preventDefault(); setDropTarget(true); } }}
     onDragLeave={() => setDropTarget(false)}
@@ -35,7 +38,7 @@ function SessionRow({ tab, session, index, onOpen }: { tab: TermTab; session?: A
       onClick={() => { report({ action: "tab-click" }); onOpen(); }} onKeyDown={(event) => { if (event.target === event.currentTarget && event.key === "Enter") onOpen(); }}
       onDoubleClick={() => { setName(title); setRenaming(true); }}
       className={`group flex min-h-[56px] cursor-pointer items-center gap-2.5 rounded-md border px-2.5 py-2 outline-none focus-visible:border-mut ${active ? "border-edge3 bg-card2" : "border-transparent hover:bg-card"}`}>
-      <SessionIcon agent={agent} status={session?.status} />
+      <SessionIcon agent={agent} status={session?.status} color={oscColor} />
       <div className="min-w-0 flex-1">
         {renaming ? <input aria-label="Session name" autoFocus value={name} onChange={(event) => setName(event.target.value)}
           onClick={(event) => event.stopPropagation()} onBlur={() => { renameTab(tab.termId, name); setRenaming(false); }}
@@ -46,7 +49,7 @@ function SessionRow({ tab, session, index, onOpen }: { tab: TermTab; session?: A
           {git ? <><Icon name="branch" size={10} /><span className="truncate">{git.branch}</span></> : <span className="truncate">{shortPath(cwd)}</span>}
           {agent && <span className="ml-auto shrink-0 text-dim">{agentLabels[agent]}</span>}
         </div>
-        {waiting && <div className="mt-1 flex items-center gap-1.5 text-[10px] text-orange"><span className="h-1 w-1 rounded-full bg-orange" />{statusLabels[session.status]}</div>}
+        {waiting && tone && <div className={`mt-1 text-[10px] ${tone.text}`}>{statusLabels[session.status]}</div>}
       </div>
       <span className="self-start pt-0.5 text-[10px] text-dim group-hover:hidden">{index < 9 ? `⌘${index + 1}` : ""}</span>
       <button aria-label={`Close ${title}`} title="Close session" className="hidden self-start text-mut hover:text-ink group-hover:block"
@@ -162,6 +165,10 @@ export function Sidebar({ view, onView }: { view: View; onView: (view: View) => 
     </div>
     <div className="min-h-0 flex-1 overflow-y-auto">
       {visibleTabs.map((tab) => <SessionRow key={tab.termId} tab={tab} session={byTerm.get(tab.termId)} index={tabs.indexOf(tab)} onOpen={() => { focusTab(tab.termId); onView("terminal"); }} />)}
+      {import.meta.env.DEV && <>
+        <div className="px-4 pb-1 pt-3 text-[10px] tracking-widest text-dim">PREVIEW · DEV ONLY</div>
+        {previewRows.map(({ tab, session }) => <SessionRow key={tab.termId} tab={tab} session={session} index={-1} onOpen={() => {}} />)}
+      </>}
       {!searching && lastSession && <section aria-label="Session suggestions" className="mx-3 my-3 rounded-lg border border-edge2 bg-card/50 p-3">
         <div className="flex items-center gap-2">
           <span className="min-w-0 flex-1 text-[11px] font-medium text-mut">Continue your last session</span>

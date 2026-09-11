@@ -24,7 +24,7 @@ function theme(id: string, name: string, colors: Partial<ThemeColors>, appearanc
 export const builtInThemes: DeckTheme[] = [
   theme("dark", "Carbon", {}),
   theme("midnight", "Midnight", { bg: "#0d111c", panel: "#111726", card: "#171e30", card2: "#202a40", overlay: "#171e30", edge: "#20293c", edge2: "#2d3850", edge3: "#44516c", ink: "#dde6f4", body: "#aab8d0", soft: "#c5d2e7", mut: "#8c9db8", dim: "#7889a5", accent: "#82aaff" }),
-  theme("forest", "Forest", { bg: "#101713", panel: "#151e18", card: "#1d2820", card2: "#29372c", overlay: "#1d2820", edge: "#2a362c", edge2: "#37463a", edge3: "#506453", ink: "#e0e9dd", body: "#adbda9", soft: "#c9d7c3", mut: "#8fa58a", dim: "#7d9478", accent: "#a9c998", green: "#a0d58a" }),
+  theme("forest", "Forest", { bg: "#101713", panel: "#151e18", card: "#1d2820", card2: "#29372c", overlay: "#1d2820", edge: "#2a362c", edge2: "#37463a", edge3: "#506453", ink: "#e0e9dd", body: "#adbda9", soft: "#c9d7c3", mut: "#8fa58a", dim: "#7d9478", accent: "#a9c998" }),
   theme("rose", "Rose Pine", { bg: "#191724", panel: "#1f1d2e", card: "#26233a", card2: "#353047", overlay: "#26233a", edge: "#302c43", edge2: "#403a55", edge3: "#59516f", ink: "#e0def4", body: "#b1abc9", soft: "#d1cde7", mut: "#a29ab9", dim: "#9088a5", accent: "#c4a7e7", green: "#9ccfd8", red: "#eb6f92", orange: "#f6c177", blue: "#9ccfd8" }),
   theme("light", "Paper", { bg: "#faf9f6", panel: "#f1f0ec", card: "#ffffff", card2: "#e7e6e1", overlay: "#ffffff", edge: "#deded7", edge2: "#c9ccc6", edge3: "#a7aca5", ink: "#202722", body: "#48544b", soft: "#303c33", mut: "#616f64", dim: "#738077", accent: "#6e4cb3", green: "#287547", blue: "#27679c", orange: "#a45b22", red: "#b3404a" }, "light"),
 ];
