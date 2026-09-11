@@ -24,6 +24,8 @@ export interface TermTab extends AgentLaunch {
   /** A program other than the shell is running, so the tab is not at a prompt. */
   busy?: boolean;
   customTitle?: string;
+  /** Color the running program set over OSC 6; agents tint per state. */
+  tabColor?: string;
   /** agent session this tab was opened to resume. */
   sessionId?: string;
 }
@@ -58,6 +60,7 @@ interface TabStore {
   reopenTab: () => Promise<void>;
   focusTab: (termId: string) => void;
   setTitle: (termId: string, title: string) => void;
+  setTabColor: (termId: string, color: string | null) => void;
   renameTab: (termId: string, title: string) => void;
   moveTab: (termId: string, index: number) => void;
 }
@@ -184,6 +187,10 @@ export function TabProvider({ children }: { children: ReactNode }) {
     setTabs((tabs) => tabs.map((t) => (t.termId === termId ? { ...t, title } : t)));
   }, []);
 
+  const setTabColor = useCallback((termId: string, color: string | null) => {
+    setTabs((tabs) => tabs.map((tab) => tab.termId === termId ? { ...tab, tabColor: color ?? undefined } : tab));
+  }, []);
+
   const renameTab = useCallback((termId: string, title: string) => {
     localStorage.setItem(`deck.tab.name.${termId}`, title.trim());
     setTabs((tabs) => tabs.map((tab) => tab.termId === termId ? { ...tab, customTitle: title.trim() || undefined } : tab));
@@ -216,8 +223,8 @@ export function TabProvider({ children }: { children: ReactNode }) {
   useEffect(() => window.deck.term.onExit((id) => closeTab(id, false)), [closeTab]);
 
   const store = useMemo<TabStore>(
-    () => ({ tabs, activeId, ready, newTab, closeTab, requestCloseTab, worktreeClose, dismissWorktreeClose, reopenTab, focusTab: setActiveId, setTitle, renameTab, moveTab }),
-    [tabs, activeId, ready, newTab, closeTab, requestCloseTab, worktreeClose, dismissWorktreeClose, reopenTab, setTitle, renameTab, moveTab],
+    () => ({ tabs, activeId, ready, newTab, closeTab, requestCloseTab, worktreeClose, dismissWorktreeClose, reopenTab, focusTab: setActiveId, setTitle, setTabColor, renameTab, moveTab }),
+    [tabs, activeId, ready, newTab, closeTab, requestCloseTab, worktreeClose, dismissWorktreeClose, reopenTab, setTitle, setTabColor, renameTab, moveTab],
   );
   return <Ctx.Provider value={store}>{children}</Ctx.Provider>;
 }

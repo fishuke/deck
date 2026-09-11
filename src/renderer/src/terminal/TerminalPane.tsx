@@ -6,6 +6,7 @@ import { chordOf, resolveKeybinds } from "../../../shared/keybinds.js";
 import { onTerminalAction } from "./actions.js";
 import { ContextBar } from "./ContextBar.js";
 import { trackTypedInput } from "../../../shared/tips.js";
+import { applyTabColor, type TabColorChannels } from "../../../shared/tabColor.js";
 import { useEffect, useRef, useState } from "react";
 import { FitAddon } from "@xterm/addon-fit";
 import { WebLinksAddon } from "@xterm/addon-web-links";
@@ -25,12 +26,14 @@ export interface TerminalPaneProps {
   onTitle: (title: string) => void;
   /** A line the user typed and submitted, as far as the keystrokes reveal it. */
   onCommand?: (command: string) => void;
+  /** The tab color the running program asked for over OSC 6, null to clear. */
+  onTabColor?: (color: string | null) => void;
   onFileDrop?: () => void;
 }
 
 // One xterm instance per pty, mounted once and kept alive across tab
 // switches (hidden, not unmounted) so scrollback survives.
-export function TerminalPane({ termId, cwd, busy, active, focused = active, onTitle, onCommand, onFileDrop }: TerminalPaneProps) {
+export function TerminalPane({ termId, cwd, busy, active, focused = active, onTitle, onCommand, onTabColor, onFileDrop }: TerminalPaneProps) {
   const { theme } = useExtensions();
   const { mode, presentationSize } = useDisplayMode();
   const appearance = useTerminalAppearance();
@@ -48,6 +51,8 @@ export function TerminalPane({ termId, cwd, busy, active, focused = active, onTi
   const typed = useRef("");
   const onCommandRef = useRef(onCommand);
   onCommandRef.current = onCommand;
+  const onTabColorRef = useRef(onTabColor);
+  onTabColorRef.current = onTabColor;
 
   useEffect(() => {
     const host = hostRef.current!;
@@ -99,6 +104,15 @@ export function TerminalPane({ termId, cwd, busy, active, focused = active, onTi
       if (input.submitted) onCommandRef.current?.(input.submitted);
     });
     const onTitleChange = term.onTitleChange(onTitle);
+    // iTerm2's tab color extension. xterm has no handler for it, so without
+    // this the sequences are parsed and dropped.
+    let channels: TabColorChannels = {};
+    const onTabColorOsc = term.parser.registerOscHandler(6, (payload) => {
+      const result = applyTabColor(channels, payload);
+      channels = result.channels;
+      if (result.color !== undefined) onTabColorRef.current?.(result.color);
+      return true;
+    });
     // One pty can be shown by two panes (a PR's agent panel and its terminal
     // tab). Only a visible pane may size the pty; a hidden one cannot measure
     // itself and would push a bogus size to the process.
@@ -151,6 +165,7 @@ export function TerminalPane({ termId, cwd, busy, active, focused = active, onTi
       offData();
       onInput.dispose();
       onTitleChange.dispose();
+      onTabColorOsc.dispose();
       onResize.dispose();
       term.dispose();
     };

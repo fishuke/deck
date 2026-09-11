@@ -21,7 +21,7 @@ function savedLayouts(): PaneLayout[] {
 
 export function TerminalView({ visible }: { visible: boolean }) {
   const { mode } = useDisplayMode();
-  const { tabs, activeId, ready, newTab, setTitle, focusTab, requestCloseTab } = useTabs();
+  const { tabs, activeId, ready, newTab, setTitle, setTabColor, focusTab, requestCloseTab } = useTabs();
   const sessions = useAgentSessions();
   const [panel, setPanel] = useState<"changes" | "files">();
   const [filesVisited, setFilesVisited] = useState(false);
@@ -129,7 +129,7 @@ export function TerminalView({ visible }: { visible: boolean }) {
             style={rect ? { left: `${rect.left}%`, top: `${rect.top}%`, width: `${rect.width}%`, height: `${rect.height}%`, display: shown ? "flex" : "none", flexDirection: "column" } : { display: "none" }}
             onMouseDown={() => { if (activeId !== tab.termId) focusTab(tab.termId); }}>
             {rects.length > 1 && <div className="flex h-6 shrink-0 items-center gap-2 bg-panel px-3 font-sans text-[10px] text-mut"><Icon name="terminal" size={10} /><span className="truncate">{tab.customTitle || tab.title}</span><button className="ml-auto" title="Close pane" onClick={() => requestCloseTab(tab.termId)}><Icon name="x" size={10} /></button></div>}
-            <div className="min-h-0 flex-1"><TerminalPane termId={tab.termId} cwd={tab.cwd} busy={tab.busy} active={shown} focused={shown && tab.termId === activeId} onTitle={(title) => setTitle(tab.termId, title)} onCommand={(command) => report({ command })} onFileDrop={() => focusTab(tab.termId)} /></div>
+            <div className="min-h-0 flex-1"><TerminalPane termId={tab.termId} cwd={tab.cwd} busy={tab.busy} active={shown} focused={shown && tab.termId === activeId} onTitle={(title) => setTitle(tab.termId, title)} onTabColor={(color) => setTabColor(tab.termId, color)} onCommand={(command) => report({ command })} onFileDrop={() => focusTab(tab.termId)} /></div>
           </div>;
         })}
         {dividers.map((divider) => <div key={divider.path.join("/") || "root"} role="separator" tabIndex={0} aria-label="Resize terminal panes" aria-orientation={divider.direction === "row" ? "vertical" : "horizontal"} aria-valuenow={Math.round(divider.ratio * 100)}
