@@ -25,18 +25,32 @@ describe("keybinds", () => {
     expect(matchKeybind(keybinds, press({ key: "n", code: "KeyN", metaKey: true }))).toBe("window.new");
   });
 
+  it("matches the terminal text size chords, digits coming from the physical key", () => {
+    const keybinds = resolveKeybinds({});
+    expect(matchKeybind(keybinds, press({ key: "=", code: "Equal", metaKey: true }))).toBe("font.increase");
+    expect(matchKeybind(keybinds, press({ key: "-", code: "Minus", metaKey: true }))).toBe("font.decrease");
+    expect(matchKeybind(keybinds, press({ key: "0", code: "Digit0", metaKey: true }))).toBe("font.reset");
+    // ⌘1-9 focus tabs; only ⌘0 is the size reset.
+    expect(matchKeybind(keybinds, press({ key: "1", code: "Digit1", metaKey: true }))).toBeUndefined();
+  });
+
   it("turns chords into electron accelerators", () => {
     expect(acceleratorOf("Meta+,")).toBe("CommandOrControl+,");
     expect(acceleratorOf("Meta+Alt+Digit2")).toBe("CommandOrControl+Alt+2");
     expect(acceleratorOf(defaultKeybinds.zen)).toBe("CommandOrControl+Shift+Return");
     expect(acceleratorOf("Ctrl+Tab")).toBe("Control+Tab");
     expect(acceleratorOf("F5")).toBeUndefined();
+    expect(acceleratorOf(defaultKeybinds["font.increase"])).toBe("CommandOrControl+=");
+    expect(acceleratorOf(defaultKeybinds["font.decrease"])).toBe("CommandOrControl+-");
+    expect(acceleratorOf(defaultKeybinds["font.reset"])).toBe("CommandOrControl+0");
   });
 
   it("formats chords with mac symbols", () => {
     expect(formatChord(defaultKeybinds.zen)).toBe("⌘⇧⏎");
     expect(formatChord("Meta+Alt+Digit1")).toBe("⌘⌥1");
     expect(formatChord("Ctrl+Space")).toBe("⌃space");
+    expect(formatChord(defaultKeybinds["font.increase"])).toBe("⌘=");
+    expect(formatChord(defaultKeybinds["font.reset"])).toBe("⌘0");
   });
 
   it("formats the summon accelerator with mac symbols", () => {

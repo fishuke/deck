@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { defaultSettings, type DeckSettings } from "../../../shared/settings.js";
-import { MAX_FONT_SIZE, MAX_LINE_HEIGHT, MIN_FONT_SIZE, MIN_LINE_HEIGHT, type CursorStyle } from "../../../shared/terminal.js";
+import { MAX_FONT_SIZE, MAX_LETTER_SPACING, MAX_LINE_HEIGHT, MIN_FONT_SIZE, MIN_LETTER_SPACING, MIN_LINE_HEIGHT, type CursorStyle } from "../../../shared/terminal.js";
 import { parseTheme } from "../../../shared/themes.js";
 import { Icon } from "../board/icons.js";
 import { control, Field } from "../chrome/settingsUi.js";
@@ -47,6 +47,10 @@ function TerminalFont() {
       <Field label="Line height">
         <input type="number" step={0.05} min={MIN_LINE_HEIGHT} max={MAX_LINE_HEIGHT} className={control} defaultValue={appearance.lineHeight}
           onBlur={(event) => { const lineHeight = Number(event.target.value); if (lineHeight && lineHeight !== appearance.lineHeight) update({ lineHeight }); }} />
+      </Field>
+      <Field label="Letter spacing">
+        <input type="number" min={MIN_LETTER_SPACING} max={MAX_LETTER_SPACING} className={control} defaultValue={appearance.letterSpacing}
+          onBlur={(event) => { const letterSpacing = Number(event.target.value); if (Number.isFinite(letterSpacing) && letterSpacing !== appearance.letterSpacing) update({ letterSpacing }); }} />
       </Field>
       <Field label="Weight">
         <input placeholder="normal or 100-900" className={control} defaultValue={appearance.fontWeight}

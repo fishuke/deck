@@ -5,6 +5,8 @@ export const MIN_FONT_SIZE = 8;
 export const MAX_FONT_SIZE = 32;
 export const MIN_LINE_HEIGHT = 0.8;
 export const MAX_LINE_HEIGHT = 2;
+export const MIN_LETTER_SPACING = -5;
+export const MAX_LETTER_SPACING = 10;
 
 export type CursorStyle = "block" | "underline" | "bar";
 /** The weights xterm accepts: the two keywords, or a hundred from 100 to 900. */
@@ -18,6 +20,8 @@ export interface TerminalAppearanceSettings {
   fontWeight: string;
   fontWeightBold: string;
   lineHeight: number;
+  /** Extra pixels between characters; negative tightens. */
+  letterSpacing: number;
   cursorBlink: boolean;
   cursorStyle: CursorStyle;
 }
@@ -54,6 +58,11 @@ export function lineHeight(height: number): number {
   return clamp(height, MIN_LINE_HEIGHT, MAX_LINE_HEIGHT, 1);
 }
 
+/** xterm spaces characters in whole pixels; a fraction would be truncated. */
+export function letterSpacing(spacing: number): number {
+  return clamp(Math.round(spacing), MIN_LETTER_SPACING, MAX_LETTER_SPACING, 0);
+}
+
 /** Everything the terminal needs, with every value already made safe. */
 export function terminalOptions(appearance: TerminalAppearanceSettings) {
   return {
@@ -62,6 +71,7 @@ export function terminalOptions(appearance: TerminalAppearanceSettings) {
     fontWeight: fontWeight(appearance.fontWeight, "normal"),
     fontWeightBold: fontWeight(appearance.fontWeightBold, "bold"),
     lineHeight: lineHeight(appearance.lineHeight),
+    letterSpacing: letterSpacing(appearance.letterSpacing),
     cursorBlink: appearance.cursorBlink,
     cursorStyle: appearance.cursorStyle,
   };

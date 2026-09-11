@@ -10,6 +10,8 @@ import { SettingsView, type SettingsSection } from "./chrome/SettingsView.js";
 import { SettingsProvider, useSettings } from "./lib/useSettings.js";
 import { isRecordingKeys } from "./lib/useKeybinds.js";
 import { matchKeybind, resolveKeybinds, type KeybindCommand } from "../../shared/keybinds.js";
+import { defaultSettings } from "../../shared/settings.js";
+import { fontSize as safeFontSize } from "../../shared/terminal.js";
 import { useTerminalAppearance } from "./lib/useTerminalAppearance.js";
 import { Onboarding } from "./chrome/Onboarding.js";
 import { Sidebar } from "./chrome/Sidebar.js";
@@ -156,6 +158,14 @@ function Shell() {
       setView("terminal");
     } else if (command === "window.new") {
       void window.deck.window.open();
+    } else if (command === "font.increase" || command === "font.decrease" || command === "font.reset") {
+      const appearance = settings?.terminalAppearance ?? defaultSettings.terminalAppearance;
+      const size = safeFontSize(appearance.fontSize);
+      const next = command === "font.reset"
+        ? defaultSettings.terminalAppearance.fontSize
+        : safeFontSize(size + (command === "font.increase" ? 1 : -1));
+      // Already at a limit: still handled, so the chord never reaches the shell.
+      if (next !== appearance.fontSize) void window.deck.updateSettings({ terminalAppearance: { ...appearance, fontSize: next } });
     } else return false;
     return true;
   }, [view, activeId, newTab, requestCloseTab, reopenTab, tabs, focusTab, settings, toggleSidebar, setView, mode, setMode]);

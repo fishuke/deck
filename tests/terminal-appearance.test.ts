@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { defaultSettings } from "../src/shared/settings.js";
-import { FALLBACK_FONT, fontStack, fontWeight, terminalOptions } from "../src/shared/terminal.js";
+import { FALLBACK_FONT, fontStack, fontWeight, letterSpacing, terminalOptions } from "../src/shared/terminal.js";
 
 describe("terminal appearance", () => {
   it("follows the platform monospace when no family is set", () => {
@@ -34,10 +34,18 @@ describe("terminal appearance", () => {
     expect(terminalOptions({ ...defaultSettings.terminalAppearance, lineHeight: Number.NaN }).lineHeight).toBe(1);
   });
 
+  it("rounds letter spacing to whole pixels and clamps what xterm would not take", () => {
+    expect(letterSpacing(1.4)).toBe(1);
+    expect(letterSpacing(-1.5)).toBe(-1);
+    expect(letterSpacing(99)).toBe(10);
+    expect(letterSpacing(-99)).toBe(-5);
+    expect(letterSpacing(Number.NaN)).toBe(0);
+  });
+
   it("resolves the shipped defaults to deck's original terminal", () => {
     expect(terminalOptions(defaultSettings.terminalAppearance)).toEqual({
       fontFamily: FALLBACK_FONT, fontSize: 13, fontWeight: "normal", fontWeightBold: "bold",
-      lineHeight: 1, cursorBlink: true, cursorStyle: "block",
+      lineHeight: 1, letterSpacing: 0, cursorBlink: true, cursorStyle: "block",
     });
   });
 });

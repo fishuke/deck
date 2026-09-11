@@ -7,7 +7,8 @@ export type KeybindCommand =
   | "view.terminal" | "view.board" | "view.agent" | "view.reviews"
   | "zen" | "presentation"
   | "tab.new" | "tab.newAgent" | "tab.close" | "tab.reopen" | "tab.next" | "tab.prev"
-  | "split.right" | "split.down" | "find" | "composer" | "changes";
+  | "split.right" | "split.down" | "find" | "composer" | "changes"
+  | "font.increase" | "font.decrease" | "font.reset";
 
 export type Keybinds = Record<KeybindCommand, string>;
 
@@ -40,6 +41,9 @@ export const keybindInfos: KeybindInfo[] = [
   { id: "find", label: "Find in terminal output", group: "Terminal", default: "Meta+F" },
   { id: "composer", label: "Toggle multiline input", group: "Terminal", default: "Meta+J" },
   { id: "changes", label: "Toggle the changes panel", group: "Terminal", default: "Meta+E" },
+  { id: "font.increase", label: "Larger terminal text", group: "Terminal", default: "Meta+=" },
+  { id: "font.decrease", label: "Smaller terminal text", group: "Terminal", default: "Meta+-" },
+  { id: "font.reset", label: "Reset terminal text size", group: "Terminal", default: "Meta+Digit0" },
 ];
 
 export const defaultKeybinds = Object.fromEntries(keybindInfos.map((info) => [info.id, info.default])) as Keybinds;
