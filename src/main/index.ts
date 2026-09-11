@@ -1,5 +1,5 @@
 // Keep first: names the channel before any module reads userData.
-import "./devChannel.js";
+import { devIcon } from "./devChannel.js";
 import {
   startExtensions,
   stopExtensions,
@@ -343,7 +343,7 @@ function createTray(): void {
 }
 
 app.whenReady().then(async () => {
-  app.dock?.setIcon(nativeImage.createFromPath(appIcon));
+  app.dock?.setIcon(nativeImage.createFromPath(devIcon ?? appIcon));
   await startPtyHost();
   startServer();
   startIndexer();

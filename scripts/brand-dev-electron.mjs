@@ -8,6 +8,7 @@
 import { execSync } from "node:child_process";
 import { copyFileSync, existsSync, readFileSync, renameSync, writeFileSync } from "node:fs";
 import path from "node:path";
+import { buildDevIcns } from "./dev-icon.mjs";
 
 if (process.platform !== "darwin") process.exit(0);
 
@@ -34,7 +35,15 @@ const run = (cmd) => execSync(cmd, { stdio: "inherit" });
 for (const key of ["CFBundleName", "CFBundleDisplayName"]) {
   run(`/usr/libexec/PlistBuddy -c 'Set :${key} ${NAME}' '${plist}'`);
 }
-copyFileSync(icns, path.join(appDir, "Contents/Resources/electron.icns"));
+const bundleIcns = path.join(appDir, "Contents/Resources/electron.icns");
+// The badge needs sharp, a devDependency; an install without it still brands
+// the bundle, just with the plain icon.
+try {
+  await buildDevIcns(path.join(root, "resources/icon.png"), bundleIcns, path.join(appDir, "Contents/Resources/icon-dev.png"));
+} catch (error) {
+  console.warn(`dev icon badge skipped (${error.message})`);
+  copyFileSync(icns, bundleIcns);
+}
 run(`codesign --force --deep --sign - '${appDir}'`);
 // LaunchServices caches the bundle icon by path; without a re-register the
 // dock and Cmd-Tab keep showing the stock Electron icon.
