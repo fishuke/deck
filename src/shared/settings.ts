@@ -200,6 +200,7 @@ export const defaultSettings: DeckSettings = {
     fontWeight: "normal",
     fontWeightBold: "bold",
     lineHeight: 1,
+    letterSpacing: 0,
     cursorBlink: true,
     cursorStyle: "block",
   },

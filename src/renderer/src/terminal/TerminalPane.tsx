@@ -168,9 +168,10 @@ export function TerminalPane({ termId, cwd, busy, active, focused = active, onTi
     if (!term) return;
     term.options.fontSize = mode === "presentation" ? presentationSize : appearance.fontSize;
     term.options.lineHeight = mode === "presentation" ? 1.25 : appearance.lineHeight;
+    term.options.letterSpacing = appearance.letterSpacing;
     const frame = requestAnimationFrame(() => { if (active) fitRef.current?.fit(); });
     return () => cancelAnimationFrame(frame);
-  }, [mode, presentationSize, active, appearance.fontSize, appearance.lineHeight]);
+  }, [mode, presentationSize, active, appearance.fontSize, appearance.lineHeight, appearance.letterSpacing]);
 
   useEffect(() => { if (termRef.current) termRef.current.options.theme = theme.terminal; }, [theme]);
 
