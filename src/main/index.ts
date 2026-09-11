@@ -1,3 +1,5 @@
+// Keep first: names the channel before any module reads userData.
+import "./devChannel.js";
 import {
   startExtensions,
   stopExtensions,
@@ -121,10 +123,6 @@ let tray: Tray | undefined;
 let registeredHotkey: string | undefined;
 /** How far a new window sits from the one it was opened from, like the Mac title-bar cascade. */
 const CASCADE_OFFSET = 24;
-
-// Dev mode runs the stock Electron binary, which otherwise names the menu
-// bar and dock "Electron".
-app.setName("Deck");
 
 function roleFor(entry: EntryPoint): WindowRole {
   return entry === "hotkey" && getSettings().windowMode === "panel"

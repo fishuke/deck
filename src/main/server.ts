@@ -2,12 +2,11 @@ import { serve, type ServerType } from "@hono/node-server";
 import { Hono } from "hono";
 import { handleMcp, type JsonRpc } from "./orchestrator.js";
 import { reviewTools } from "./review.js";
+import { SERVER_PORT } from "./port.js";
 import { applyHook, requestReview, type HookPayload } from "./sessions.js";
 
 // deck's local HTTP surface: Claude Code hooks curl into it and deck's own
 // assistants reach their MCP tools through it. Loopback only.
-
-export const SERVER_PORT = 47800;
 
 let server: ServerType | undefined;
 

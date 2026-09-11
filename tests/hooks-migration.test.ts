@@ -6,7 +6,6 @@ import { afterAll, describe, expect, it, vi } from "vitest";
 
 const state = vi.hoisted(() => ({ root: "" }));
 vi.mock("electron", () => ({ app: { getPath: () => state.root } }));
-vi.mock("../src/main/server.js", () => ({ SERVER_PORT: 19470 }));
 state.root = fs.mkdtempSync(path.join(os.tmpdir(), "deck-upgrade-"));
 vi.spyOn(os, "homedir").mockImplementation(() => state.root);
 vi.stubEnv("CODEX_HOME", path.join(state.root, "codex"));
@@ -33,6 +32,17 @@ describe("provider hook installation", () => {
     expect(settings.hooks.Stop[1].hooks[0].command).toContain(`x-deck-agent: ${agent}`);
     expect(hooksInstalled(agent)).toBe(true);
     expect(fs.existsSync(path.join(root, "skills", "deck-review", "SKILL.md"))).toBe(true);
+  });
+
+  it("rewrites a hook an older deck installed with its port baked in", () => {
+    const file = path.join(state.root, ".claude", "settings.json");
+    const baked = `curl -s -m 3 -X POST 'http://127.0.0.1:47800/api/hook' -H 'x-deck-term: '"$DECK_TERM_ID" -H 'x-deck-agent: claude' -H 'Content-Type: application/json' --data-binary @- >/dev/null || true`;
+    fs.writeFileSync(file, JSON.stringify({ hooks: { Stop: [{ hooks: [{ type: "command", command: baked }] }] } }));
+    expect(installHooks("claude").installed).toBe(true);
+    const stop = JSON.parse(fs.readFileSync(file, "utf8")).hooks.Stop;
+    expect(stop).toHaveLength(1);
+    expect(stop[0].hooks[0].command).toContain("${DECK_PORT:-47800}");
+    expect(installHooks("claude").installed).toBe(false);
   });
 });
 

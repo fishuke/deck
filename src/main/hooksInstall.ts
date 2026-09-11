@@ -2,7 +2,7 @@ import type { Agent } from "../shared/agents.js";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
-import { SERVER_PORT } from "./server.js";
+import { DEFAULT_SERVER_PORT } from "./port.js";
 
 // Merges deck's session-tracking hooks into ~/.claude/settings.json, so every
 // Claude Code session on the machine reports lifecycle events to deck. The
@@ -17,10 +17,14 @@ const CLAUDE_EVENTS = [
   "SessionEnd",
 ];
 
-const MARKER = "/api/hook' -H 'x-deck-term:";
+const MARKER = "/api/hook";
 
+// One settings.json serves every deck channel, so the port comes from the
+// terminal rather than from install time: each terminal carries the port of
+// the deck that spawned it, and a shell outside deck falls back to the
+// installed app's.
 function hookCommand(agent: Agent): string {
-  return `curl -s -m 3 -X POST 'http://127.0.0.1:${SERVER_PORT}/api/hook' -H 'x-deck-term: '"$DECK_TERM_ID" -H 'x-deck-agent: ${agent}' -H 'Content-Type: application/json' --data-binary @- >/dev/null || true`;
+  return `curl -s -m 3 -X POST "http://127.0.0.1:\${DECK_PORT:-${DEFAULT_SERVER_PORT}}/api/hook" -H 'x-deck-term: '"$DECK_TERM_ID" -H 'x-deck-agent: ${agent}' -H 'Content-Type: application/json' --data-binary @- >/dev/null || true`;
 }
 
 interface HookGroup {
@@ -48,7 +52,7 @@ message:
    cat > /tmp/deck-review-note.md <<'NOTE'
    <your summary>
    NOTE
-   curl -s -m 3 -X POST 'http://127.0.0.1:${SERVER_PORT}/api/review' -H "x-deck-term: $DECK_TERM_ID" --data-binary @/tmp/deck-review-note.md >/dev/null || true
+   curl -s -m 3 -X POST "http://127.0.0.1:\${DECK_PORT:-${DEFAULT_SERVER_PORT}}/api/review" -H "x-deck-term: $DECK_TERM_ID" --data-binary @/tmp/deck-review-note.md >/dev/null || true
    \`\`\`
 
    Skip this silently if $DECK_TERM_ID is empty.
@@ -82,8 +86,18 @@ export function installHooks(agent: Agent = "claude"): { installed: boolean; pat
   let changed = false;
   for (const event of agent === "codex" ? CODEX_EVENTS : CLAUDE_EVENTS) {
     const groups: HookGroup[] = hooks[event] ?? [];
-    if (!groups.some((group) => group.hooks?.some((hook) => hook.command?.includes(MARKER)))) {
-      groups.push({ hooks: [{ type: "command", command: hookCommand(agent) }] });
+    const command = hookCommand(agent);
+    // An older deck baked its port into the URL; rewrite those commands
+    // instead of leaving a second hook pointing at one channel.
+    const installed = groups.flatMap((group) => group.hooks ?? []).filter((hook) => hook.command?.includes(MARKER));
+    if (installed.length) {
+      for (const hook of installed) {
+        if (hook.command === command) continue;
+        hook.command = command;
+        changed = true;
+      }
+    } else {
+      groups.push({ hooks: [{ type: "command", command }] });
       hooks[event] = groups;
       changed = true;
     }

@@ -135,7 +135,10 @@ npm test            # unit tests on Electron's Node runtime
 npm run test:ui     # Electron smoke test with fixture sessions, screenshots in artifacts/ui
 npm run test:pty    # native PTY input/output, replay, metadata and termination
 npm run demo:gif    # render docs/media/deck.gif and deck.mp4 from docs/media/motion (needs ffmpeg)
+npm run install:app # build and install /Applications/Deck.app from this checkout
 ```
+
+**Using Deck while working on it.** `npm run dev` runs as its own channel, **Deck Dev**: separate name, dock tile, database, settings and PTY socket, and it listens on port 47801 instead of 47800. So the Deck you use all day can stay open while dev restarts on every save. Its settings start from the defaults, so give it its own summon hotkey. Agent hooks are installed once globally and carry the port of the terminal they run in, so each channel sees its own sessions.
 
 Tests use Electron's Node runtime to match the native SQLite ABI. The UI smoke test opens an isolated window with fixture sessions and never launches paid agents or touches your real sessions. Run it in a desktop environment.
 

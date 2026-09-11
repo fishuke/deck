@@ -5,6 +5,7 @@ import fs from "node:fs";
 import net from "node:net";
 import os from "node:os";
 import path from "node:path";
+import { SERVER_PORT } from "./port.js";
 import type { ClientMessage, HostMessage, SpawnRequest, TermMeta } from "./ptyHost.js";
 import { clearTermLinks, linkTermToIssue, registerAgentTerm, endTermSessions, updateForegroundSession } from "./sessions.js";
 import { getSettings } from "./settings.js";
@@ -89,6 +90,9 @@ function spawnRequest(opts: TermCreateOptions): SpawnRequest {
       PATH: "/usr/bin:/bin:/usr/sbin:/sbin",
       TERM_PROGRAM: "deck",
       COLORTERM: "truecolor",
+      // Agent hooks read the port from here, so they report to the deck
+      // instance that spawned the terminal and not to another channel's.
+      DECK_PORT: String(SERVER_PORT),
     },
     command,
     agent,

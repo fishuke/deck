@@ -4,7 +4,7 @@ import { newConversation, runTurn, type AskResult, type Conversation, type OnEve
 import { kvGet, kvSet } from "./db.js";
 import { fileContent, prComments, prDetail, prDiff, type DraftComment } from "./github.js";
 import { schema, str, type Json, type Tool } from "./orchestrator.js";
-import { SERVER_PORT } from "./server.js";
+import { SERVER_PORT } from "./port.js";
 import { getSettings } from "./settings.js";
 
 // The review assistant: one conversation per pull request, living next to the

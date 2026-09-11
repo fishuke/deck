@@ -19,7 +19,8 @@
     "test:ui": "npm run build && node scripts/ui-smoke.mjs",
     "test:pty": "npm run build && node scripts/pty-smoke.mjs",
     "demo:gif": "node scripts/readme-gif.mjs",
-    "dist": "electron-vite build && electron-builder --mac --publish never"
+    "dist": "electron-vite build && electron-builder --mac --publish never",
+    "install:app": "electron-vite build && electron-builder --mac dir && node scripts/install-app.mjs"
   },
   "dependencies": {
     "@fontsource/jetbrains-mono": "^5.3.0",

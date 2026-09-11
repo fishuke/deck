@@ -6,22 +6,25 @@
 // and electron's path.txt repointed at it.
 // Runs on postinstall; a fresh `yarn install` restores stock Electron first.
 import { execSync } from "node:child_process";
-import { copyFileSync, existsSync, renameSync, writeFileSync } from "node:fs";
+import { copyFileSync, existsSync, readFileSync, renameSync, writeFileSync } from "node:fs";
 import path from "node:path";
-
-const NAME = "Deck";
 
 if (process.platform !== "darwin") process.exit(0);
 
 const root = path.dirname(import.meta.dirname);
+const { build } = JSON.parse(readFileSync(path.join(root, "package.json"), "utf8"));
+// The name src/main/devChannel.ts derives too, from the same field.
+const NAME = `${build.productName} Dev`;
+// Bundle names a previous run of this script (or a fresh install) left behind.
+const PREVIOUS = ["Electron", build.productName];
 const distDir = path.join(root, "node_modules/electron/dist");
-const stockDir = path.join(distDir, "Electron.app");
 const appDir = path.join(distDir, `${NAME}.app`);
+const staleDir = PREVIOUS.map((name) => path.join(distDir, `${name}.app`)).find(existsSync);
 const icns = path.join(root, "resources/icon.icns");
 
-if (!existsSync(icns) || (!existsSync(stockDir) && !existsSync(appDir))) process.exit(0);
+if (!existsSync(icns) || (!staleDir && !existsSync(appDir))) process.exit(0);
 
-if (existsSync(stockDir)) renameSync(stockDir, appDir);
+if (staleDir) renameSync(staleDir, appDir);
 const executable = `${NAME}.app/Contents/MacOS/Electron`;
 // No trailing newline: electron's index.js uses this verbatim as the path.
 writeFileSync(path.join(distDir, "..", "path.txt"), executable);
