@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import type { AgentSession } from "../../../main/sessions.js";
+import { statusTones } from "../chrome/SessionIcon.js";
 import { agentLabels } from "../../../shared/agents.js";
 import { Icon } from "../board/icons.js";
 import { useAgentSessions } from "../lib/useSessions.js";
@@ -11,12 +12,8 @@ import { isWaiting, project, useAttentionCount } from "./attention.js";
 // The agent page: deck's orchestrator front and centre (like Linear's Agent
 // view), with a rail of waiting sessions and every live session.
 
-const statusRow: Record<AgentSession["status"], { dot: string; color: string; label: string }> = {
-  working: { dot: "◐", color: "text-blue", label: "running" },
-  needs_input: { dot: "●", color: "text-orange", label: "needs input" },
-  needs_review: { dot: "◆", color: "text-orange", label: "needs review" },
-  idle: { dot: "✓", color: "text-green", label: "idle" },
-  ended: { dot: "✓", color: "text-dim", label: "done" },
+const statusWord: Record<AgentSession["status"], string> = {
+  working: "running", needs_input: "needs input", needs_review: "needs review", idle: "idle", ended: "done",
 };
 
 function ago(iso: string | number): string {
@@ -83,7 +80,7 @@ export function AgentPage({ visible }: { visible: boolean }) {
                 <div key={s.session_id} className="flex flex-col gap-0.5 rounded-lg border border-orange/30 bg-card px-3 py-2 hover:border-orange/60">
                   <button onClick={() => openSession(s)} className="flex flex-col gap-0.5 text-left">
                     <span className="truncate text-[11px] text-ink">{s.title ?? project(s.cwd)}</span>
-                    <span className="text-[10px] text-orange">{statusRow[s.status].label} · {agentLabels[s.agent]} · {project(s.cwd)}</span>
+                    <span className="text-[10px] text-orange">{statusWord[s.status]} · {agentLabels[s.agent]} · {project(s.cwd)}</span>
                     {s.review_note && <span className="line-clamp-2 text-[10px] text-dim">{s.review_note}</span>}
                   </button>
                   {s.term_id && <button onClick={() => setReplyTo(s)} className="self-start text-[10px] text-dim hover:text-accent">Reply from here</button>}
@@ -94,15 +91,15 @@ export function AgentPage({ visible }: { visible: boolean }) {
           <Section title="Sessions" count={live.length}>
             {live.length === 0 && <span className="text-[11px] text-dim">No agent sessions yet — run <span className="text-soft">claude</span> or <span className="text-soft">codex</span> in a terminal, or ask deck to start one.</span>}
             {live.filter((s) => !isWaiting(s)).map((s) => {
-              const r = statusRow[s.status];
+              const r = statusTones[s.status];
               return (
                 <button key={s.session_id} onClick={() => openSession(s)} className="flex items-center gap-2.5 rounded-lg border border-edge2 bg-card px-3 py-2 text-left hover:border-edge3">
-                  <span className={`w-3 ${r.color}`}>{r.dot}</span>
+                  <span className={`w-3 ${r.text}`}>{r.glyph}</span>
                   <span className="min-w-0 flex-1">
                     <span className="block truncate text-[11px] text-ink">{s.title ?? project(s.cwd)}</span>
                     <span className="block text-[10px] text-dim">{agentLabels[s.agent]} · {project(s.cwd)} · {ago(s.updated_at)}</span>
                   </span>
-                  <span className={`text-[10px] ${r.color}`}>{r.label}</span>
+                  <span className={`text-[10px] ${r.text}`}>{statusWord[s.status]}</span>
                 </button>
               );
             })}

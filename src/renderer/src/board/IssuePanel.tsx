@@ -4,20 +4,13 @@ import type { IssuePr } from "../../../main/github.js";
 import type { RepoDir } from "../../../main/providers.js";
 import type { BoardIssue } from "../../../main/board/types.js";
 import type { AgentSession } from "../../../main/sessions.js";
+import { statusLabels, statusTones } from "../chrome/SessionIcon.js";
 import { useTabs } from "../store.js";
 
 const stateColor: Record<string, string> = {
   OPEN: "text-green",
   MERGED: "text-accent",
   CLOSED: "text-red",
-};
-
-const agentGlyph: Record<AgentSession["status"], { dot: string; color: string; label: string }> = {
-  working: { dot: "◐", color: "text-blue", label: "working" },
-  needs_input: { dot: "●", color: "text-orange", label: "needs input" },
-  needs_review: { dot: "◆", color: "text-orange", label: "needs review" },
-  idle: { dot: "·", color: "text-green", label: "idle" },
-  ended: { dot: "✓", color: "text-dim", label: "ended" },
 };
 
 export interface IssuePanelProps {
@@ -108,7 +101,7 @@ export function IssuePanel({ issue, rejected, onClose, onOpenDiff }: IssuePanelP
           <div className="-mt-2 text-[11px] text-dim">no agent has touched this ticket</div>
         )}
         {linked.map((s) => {
-          const g = agentGlyph[s.status];
+          const g = statusTones[s.status];
           return (
             <button
               key={s.session_id}
@@ -118,12 +111,12 @@ export function IssuePanel({ issue, rejected, onClose, onOpenDiff }: IssuePanelP
               }
               className="flex items-center gap-2.5 rounded-lg border border-edge2 bg-card px-3 py-2 text-left hover:border-edge3"
             >
-              <span className={`text-[11px] ${g.color}`}>{g.dot}</span>
+              <span className={`text-[11px] ${g.text}`}>{g.glyph}</span>
               <span className="min-w-0 flex-1 truncate text-[11px] text-soft">
                 {s.title ?? s.session_id.slice(0, 8)}
               </span>
-              <span className={`shrink-0 text-[10px] ${g.color}`}>
-                {s.term_id && openTermIds.has(s.term_id) ? "focus →" : `${g.label} · continue →`}
+              <span className={`shrink-0 text-[10px] ${g.text}`}>
+                {s.term_id && openTermIds.has(s.term_id) ? "focus →" : `${statusLabels[s.status].toLowerCase()} · continue →`}
               </span>
             </button>
           );
