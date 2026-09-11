@@ -102,9 +102,9 @@ export function usePaletteActions({ onView, onSettings, onSidebar }: PaletteActi
     const appearance = settings.terminalAppearance;
     const size = safeFontSize(appearance.fontSize);
     const setFont = (fontSize: number) => () => update({ terminalAppearance: { ...appearance, fontSize } });
-    if (size < MAX_FONT_SIZE) actions.push(item("A", "Increase terminal font size", `${size}px → ${size + 1}px`, setFont(size + 1), { keywords: "bigger larger text" }));
-    if (size > MIN_FONT_SIZE) actions.push(item("A", "Decrease terminal font size", `${size}px → ${size - 1}px`, setFont(size - 1), { keywords: "smaller text" }));
-    if (size !== defaultSettings.terminalAppearance.fontSize) actions.push(item("A", "Reset terminal font size", `${size}px → ${defaultSettings.terminalAppearance.fontSize}px`, setFont(defaultSettings.terminalAppearance.fontSize)));
+    if (size < MAX_FONT_SIZE) actions.push(item("A", "Increase terminal font size", `${chord("font.increase")} · ${size}px → ${size + 1}px`, setFont(size + 1), { keywords: "bigger larger text zoom in" }));
+    if (size > MIN_FONT_SIZE) actions.push(item("A", "Decrease terminal font size", `${chord("font.decrease")} · ${size}px → ${size - 1}px`, setFont(size - 1), { keywords: "smaller text zoom out" }));
+    if (size !== defaultSettings.terminalAppearance.fontSize) actions.push(item("A", "Reset terminal font size", `${chord("font.reset")} · ${size}px → ${defaultSettings.terminalAppearance.fontSize}px`, setFont(defaultSettings.terminalAppearance.fontSize), { keywords: "actual size zoom" }));
 
     const toggle = (on: boolean, whenOn: string, whenOff: string, meta: string, patch: Partial<DeckSettings>) =>
       item("⚙", on ? whenOn : whenOff, meta, () => update(patch), { keywords: "setting toggle enable disable turn on off" });
