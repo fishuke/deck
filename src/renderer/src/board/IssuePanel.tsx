@@ -4,7 +4,7 @@ import type { IssuePr } from "../../../main/github.js";
 import type { RepoDir } from "../../../main/providers.js";
 import type { BoardIssue } from "../../../main/board/types.js";
 import type { AgentSession } from "../../../main/sessions.js";
-import { statusLabels, statusTones } from "../chrome/SessionIcon.js";
+import { StatusMark, statusLabels, statusTones } from "../chrome/SessionIcon.js";
 import { useTabs } from "../store.js";
 
 const stateColor: Record<string, string> = {
@@ -111,7 +111,7 @@ export function IssuePanel({ issue, rejected, onClose, onOpenDiff }: IssuePanelP
               }
               className="flex items-center gap-2.5 rounded-lg border border-edge2 bg-card px-3 py-2 text-left hover:border-edge3"
             >
-              <span className={`text-[11px] ${g.text}`}>{g.glyph}</span>
+              <span className={g.text}><StatusMark status={s.status} /></span>
               <span className="min-w-0 flex-1 truncate text-[11px] text-soft">
                 {s.title ?? s.session_id.slice(0, 8)}
               </span>

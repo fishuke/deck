@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import type { AgentSession } from "../../../main/sessions.js";
-import { statusTones } from "../chrome/SessionIcon.js";
+import { StatusMark, statusTones } from "../chrome/SessionIcon.js";
 import { agentLabels } from "../../../shared/agents.js";
 import { Icon } from "../board/icons.js";
 import { useAgentSessions } from "../lib/useSessions.js";
@@ -94,7 +94,7 @@ export function AgentPage({ visible }: { visible: boolean }) {
               const r = statusTones[s.status];
               return (
                 <button key={s.session_id} onClick={() => openSession(s)} className="flex items-center gap-2.5 rounded-lg border border-edge2 bg-card px-3 py-2 text-left hover:border-edge3">
-                  <span className={`w-3 ${r.text}`}>{r.glyph}</span>
+                  <span className={r.text}><StatusMark status={s.status} /></span>
                   <span className="min-w-0 flex-1">
                     <span className="block truncate text-[11px] text-ink">{s.title ?? project(s.cwd)}</span>
                     <span className="block text-[10px] text-dim">{agentLabels[s.agent]} · {project(s.cwd)} · {ago(s.updated_at)}</span>
