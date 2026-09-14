@@ -6,7 +6,7 @@ import { afterAll, beforeEach, describe, expect, it, vi } from "vitest";
 const state = vi.hoisted(() => ({ directory: "" }));
 vi.mock("electron", () => ({ app: { getPath: () => state.directory } }));
 state.directory = fs.mkdtempSync(path.join(os.tmpdir(), "deck-test-"));
-const { openDb } = await import("../src/main/db.js");
+const { openDb, kvGet } = await import("../src/main/db.js");
 const { applyHook, listSessions, linkTermToIssue, linkTermToWorkspace, moveTermSessions, registerAgentTerm, requestReview, endTermSessions, updateForegroundSession } = await import("../src/main/sessions.js");
 const { indexFile, searchConversations, sessionMessages } = await import("../src/main/indexer.js");
 
@@ -54,6 +54,12 @@ describe("provider session lifecycle", () => {
     moveTermSessions("term", "convozy");
     applyHook({ session_id: "s2", hook_event_name: "UserPromptSubmit", prompt: "Hi again", cwd: "/repo" }, "term");
     expect(listSessions().map((s) => s.workspace)).toEqual(["convozy", "convozy"]);
+  });
+  it("remembers a terminal's workspace in the db, and forgets it once the terminal is gone", () => {
+    moveTermSessions("term", "convozy");
+    expect(kvGet<Record<string, string>>("term_workspaces")).toMatchObject({ term: "convozy" });
+    endTermSessions("term");
+    expect(kvGet<Record<string, string>>("term_workspaces")?.term).toBeUndefined();
   });
   it("links Codex to its terminal and ticket without duplicating the pending row", () => {
     registerAgentTerm({ id: "term", cwd: "/repo", agent: "codex", issueKey: "ABC-1" });

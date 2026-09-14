@@ -295,8 +295,8 @@ export async function startPtyHost(): Promise<void> {
   // Terminals that lived through the restart keep their ticket link and
   // session rows; only the ones that didn't get unlinked.
   for (const t of terms) if (t.issueKey) linkTermToIssue(t.id, t.issueKey);
-  for (const t of terms) if (t.workspace) linkTermToWorkspace(t.id, t.workspace);
   clearTermLinks(terms.map((t) => t.id));
+  for (const t of terms) if (t.workspace && !termWorkspace(t.id)) linkTermToWorkspace(t.id, t.workspace);
   for (const term of terms) if (term.foregroundProcess) updateForegroundSession(term);
   stopLegacyDetection = startLegacyDetection(client);
 

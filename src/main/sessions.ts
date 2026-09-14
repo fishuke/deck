@@ -1,5 +1,5 @@
 import { sessionKey, type Agent } from "../shared/agents.js";
-import { openDb } from "./db.js";
+import { kvGet, kvSet, openDb } from "./db.js";
 
 // Registry of Claude Code and Codex sessions, fed by hook callbacks. Sessions
 // started outside deck are tracked too — they just carry no term_id.
@@ -32,12 +32,17 @@ export function linkTermToIssue(termId: string, issueKey: string): void {
   pendingLinks.set(termId, issueKey);
 }
 
-// Hooks only carry the terminal id; the terminal's workspace is remembered
-// here so its sessions land in the right one.
-const termWorkspaces = new Map<string, string>();
+// Which workspace each live terminal belongs to. Hooks only carry the
+// terminal id, so this is how sessions land in the right workspace; it is
+// kept in the db because terminals outlive the main process.
+const TERM_WORKSPACES_KEY = "term_workspaces";
+const termWorkspaces = new Map<string, string>(Object.entries(kvGet<Record<string, string>>(TERM_WORKSPACES_KEY) ?? {}));
+const saveTermWorkspaces = () => kvSet(TERM_WORKSPACES_KEY, Object.fromEntries(termWorkspaces));
 
 export function linkTermToWorkspace(termId: string, workspace: string): void {
+  if (termWorkspaces.get(termId) === workspace) return;
   termWorkspaces.set(termId, workspace);
+  saveTermWorkspaces();
 }
 
 /** The workspace a terminal was opened in or moved to, as main knows it. */
@@ -47,7 +52,7 @@ export function termWorkspace(termId: string): string | undefined {
 
 /** Moves a terminal's sessions along with it to another workspace. */
 export function moveTermSessions(termId: string, workspace: string): void {
-  termWorkspaces.set(termId, workspace);
+  linkTermToWorkspace(termId, workspace);
   openDb().prepare("UPDATE agent_sessions SET workspace = ? WHERE term_id = ?").run(workspace, termId);
   notify();
 }
@@ -67,6 +72,9 @@ export function requestReview(termId: string, note: string): void {
 /** Session rows outlive their terminals; a term_id whose terminal is gone
  *  would mislabel whatever tab later reuses it. */
 export function clearTermLinks(liveTermIds: string[]): void {
+  const live = new Set(liveTermIds);
+  for (const id of [...termWorkspaces.keys()]) if (!live.has(id)) termWorkspaces.delete(id);
+  saveTermWorkspaces();
   const keep = liveTermIds.map(() => "?").join(",") || "''";
   openDb()
     .prepare(`UPDATE agent_sessions SET status = 'ended', term_id = NULL WHERE term_id IS NOT NULL AND term_id NOT IN (${keep})`)
@@ -237,6 +245,7 @@ export function updateForegroundSession(term: { id: string; cwd: string; foregro
 export function endTermSessions(termId: string): void {
   pendingLinks.delete(termId);
   termWorkspaces.delete(termId);
+  saveTermWorkspaces();
   openDb().prepare("DELETE FROM agent_sessions WHERE session_id = ?").run(`pending:${termId}`);
   openDb().prepare("UPDATE agent_sessions SET status = 'ended', term_id = NULL, updated_at = ? WHERE term_id = ?")
     .run(Date.now(), termId);
