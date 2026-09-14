@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import type { BoardCache, BoardIssue } from "../../../main/board/types.js";
-import type { InboxPr } from "../../../main/prInbox.js";
+import type { InboxPr, PrInbox } from "../../../main/prInbox.js";
+import type { ReviewSource } from "../../../shared/settings.js";
 import { prKey } from "../../../shared/prs.js";
 import { usePrInbox } from "./useInbox.js";
 import { useSettings } from "./useSettings.js";
@@ -25,50 +26,54 @@ export function issueFor(pr: InboxPr, board: BoardCache | undefined): BoardIssue
   });
 }
 
-/** Non-draft review requests, oldest first so nothing sits unreviewed while
- *  new ones jump the queue. With review columns configured, only PRs whose
- *  card sits in one of those columns make it in. A PR stays until it is
- *  merged or closed: reviewing it is not always the end of the user's part. */
-export function reviewQueue(requested: InboxPr[], board: BoardCache | undefined, reviewColumns: string[]): InboxPr[] {
-  const statusIds = new Set(board?.columns.filter((c) => reviewColumns.includes(c.name)).flatMap((c) => c.statusIds));
-  const inReview = (pr: InboxPr) => {
-    if (reviewColumns.length === 0) return true;
-    const issue = issueFor(pr, board);
-    return Boolean(issue && statusIds.has(issue.statusId));
-  };
-  return requested
-    .filter((pr) => !pr.isDraft && inReview(pr))
-    .sort((a, b) => a.updatedAt.localeCompare(b.updatedAt));
+/** The PRs waiting on the user, oldest first so nothing sits unreviewed while
+ *  new ones jump the queue. A PR stays until it is merged or closed:
+ *  reviewing it is not always the end of the user's part. */
+export function reviewQueue(prs: InboxPr[]): InboxPr[] {
+  return prs.filter((pr) => !pr.isDraft).sort((a, b) => a.updatedAt.localeCompare(b.updatedAt));
+}
+
+/** The inbox list the queue is built from: GitHub's review requests, with the
+ *  PRs the user has already reviewed behind them, or the board's review
+ *  column. */
+function sourceList(inbox: PrInbox | undefined, source: ReviewSource): InboxPr[] {
+  if (source === "board") return inbox?.reviewColumn ?? [];
+  const reviewed = inbox?.reviewed ?? [];
+  return [
+    ...(inbox?.reviewRequested ?? []),
+    ...reviewed.filter((pr) => pr.newSinceReview),
+    ...reviewed.filter((pr) => !pr.newSinceReview),
+  ];
 }
 
 /** Live review queue plus the board it was built from. */
 export function useReviewQueue() {
   const inbox = usePrInbox();
   const [board, setBoard] = useState<BoardCache>();
-  const boardSettings = useSettings()?.board;
+  const settings = useSettings();
+  const source = settings?.reviewSource ?? "github";
 
   useEffect(() => {
     void window.deck.board.get().then(setBoard);
     return window.deck.board.onChanged(setBoard);
   }, []);
 
-  const waiting = useMemo(() => {
-    const reviewed = inbox?.reviewed ?? [];
-    return [
-      ...(inbox?.reviewRequested ?? []),
-      ...reviewed.filter((pr) => pr.newSinceReview),
-      ...reviewed.filter((pr) => !pr.newSinceReview),
-    ];
-  }, [inbox]);
-  const queue = useMemo(() => reviewQueue(waiting, board, boardSettings?.reviewColumns ?? []), [waiting, board, boardSettings]);
-  const reviewed = useMemo(() => new Map((inbox?.reviewed ?? []).map((pr) => [prKey(pr), Boolean(pr.newSinceReview)])), [inbox]);
+  const waiting = useMemo(() => sourceList(inbox, source), [inbox, source]);
+  const queue = useMemo(() => reviewQueue(waiting), [waiting]);
+  const reviewed = useMemo(() => new Map(
+    [...(inbox?.reviewed ?? []), ...(inbox?.reviewColumn ?? [])]
+      .filter((pr) => pr.reviewedByViewer)
+      .map((pr) => [prKey(pr), Boolean(pr.newSinceReview)]),
+  ), [inbox]);
   // Every open PR the reviews page can show, queued or not.
   const lists = useMemo(() => ({
-    waiting: inbox?.reviewRequested ?? [],
+    waiting: source === "board" ? inbox?.reviewColumn ?? [] : inbox?.reviewRequested ?? [],
     reviewed: inbox?.reviewed ?? [],
     mine: inbox?.mine ?? [],
-  }), [inbox]);
+  }), [inbox, source]);
   // Queued PRs awaiting a first review, or with new work since the user's.
-  const actionable = useMemo(() => queue.filter((pr) => reviewed.get(prKey(pr)) !== false).length, [queue, reviewed]);
-  return { queue, board, loaded: inbox !== undefined, reviewed, actionable, lists };
+  const actionable = useMemo(() => queue.filter((pr) => !pr.reviewedByViewer || pr.newSinceReview).length, [queue]);
+  // The board source has nothing to go on until a column is picked.
+  const needsColumn = source === "board" && (settings?.board.reviewColumns.length ?? 0) === 0;
+  return { queue, board, loaded: inbox !== undefined, reviewed, actionable, lists, source, needsColumn };
 }

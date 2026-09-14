@@ -167,7 +167,7 @@ export function GeneralSettings() {
           </Field>
         </Card>
 
-        <Card title="Board" description="Which tracker Deck mirrors, its credentials, and how the board's columns drive the reviews queue and merges." className="lg:col-span-2">
+        <Card title="Board" description="Which tracker Deck mirrors, its credentials, and how its columns drive the reviews queue and merges." className="lg:col-span-2">
           <div className="grid gap-x-8 gap-y-4 lg:grid-cols-2">
             <div className="grid grid-cols-2 gap-4">
               <BoardConnectionFields settings={settings} onChange={(patch) => void update(patch)} />
@@ -185,12 +185,21 @@ export function GeneralSettings() {
                     {statusNames.map((name) => <option key={name} value={name}>{name}</option>)}
                   </select>
                 </Field>
-                <Field label="Review column" hint="PRs whose card sits here wait on you">
-                  <select className={`w-full ${control}`} value={settings.board.reviewColumns[0] ?? ""} onChange={(e) => void updateBoard({ reviewColumns: e.target.value ? [e.target.value] : [] })}>
-                    <option value="">All review requests</option>
-                    {columnNames.map((name) => <option key={name} value={name}>{name}</option>)}
+                <Field label="Reviews queue" hint="where the reviews page gets its PRs">
+                  <select className={`w-full ${control}`} value={settings.reviewSource}
+                    onChange={(e) => void update({ reviewSource: e.target.value as DeckSettings["reviewSource"] })}>
+                    <option value="github">Every PR GitHub asks me to review</option>
+                    <option value="board">The PRs of a {tracker} column</option>
                   </select>
                 </Field>
+                {settings.reviewSource === "board" && (
+                  <Field label="Review column" hint="every card here puts its PRs in the queue">
+                    <select className={`w-full ${control}`} value={settings.board.reviewColumns[0] ?? ""} onChange={(e) => void updateBoard({ reviewColumns: e.target.value ? [e.target.value] : [] })}>
+                      <option value="">Pick a column…</option>
+                      {columnNames.map((name) => <option key={name} value={name}>{name}</option>)}
+                    </select>
+                  </Field>
+                )}
               </div>
               <Toggle checked={onMerge.enabled} onChange={(enabled) => void updateOnMerge({ enabled })}>Move the issue when its PR is merged from deck</Toggle>
               {onMerge.enabled && (

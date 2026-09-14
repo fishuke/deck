@@ -15,9 +15,9 @@ export interface BoardSettings {
   rejectedPattern: string;
   /** How many days of Done issues stay on the board. */
   doneWindowDays: number;
-  /** Board columns whose issues count as reviewable: a review request only
-   *  reaches the queue when its PR belongs to a card in one of these. Empty
-   *  keeps every review request. */
+  /** Board columns the reviews queue is built from when it is sourced from
+   *  the board: every card sitting in one of these puts its open PRs in the
+   *  queue. Unused when the queue comes from GitHub. */
   reviewColumns: string[];
   /** What happens to an issue when one of its PRs is merged from deck. */
   onMerge: OnMergeSettings;
@@ -54,6 +54,12 @@ export interface OnMergeSettings {
   column: string;
   mode: OnMergeMode;
 }
+
+/** Where the reviews queue gets its pull requests.
+ *  - "github": every open PR GitHub has asked the user to review.
+ *  - "board": the open PRs of the cards in the board's review columns,
+ *    whether or not GitHub asked the user for a review. */
+export type ReviewSource = "github" | "board";
 
 /** Which sessions the agent page may be told about: every live one, those in
  *  the repository being worked in, or those under a listed project. */
@@ -127,6 +133,9 @@ export interface DeckSettings {
   askModel: string;
   defaultView: DefaultView;
   autoFix: AutoFixSettings;
+  /** Where the reviews queue comes from; `board.reviewColumns` names the
+   *  columns the board source reads. */
+  reviewSource: ReviewSource;
   board: BoardSettings;
   jira: JiraSettings;
   linear: LinearSettings;
@@ -166,6 +175,7 @@ export const defaultSettings: DeckSettings = {
   askModel: "sonnet",
   defaultView: "terminal",
   autoFix: { enabled: false, ci: true, conflicts: true, push: "review" },
+  reviewSource: "github",
   board: {
     provider: "jira",
     rejectedPattern: "reject",

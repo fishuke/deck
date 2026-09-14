@@ -1,7 +1,9 @@
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
 import { prKey } from "../shared/prs.js";
+import { getBoardCache } from "./board/board.js";
 import { kvGet, kvSet } from "./db.js";
+import { prsForIssue } from "./issuePrs.js";
 import { getSettings } from "./settings.js";
 
 const exec = promisify(execFile);
@@ -29,6 +31,8 @@ export interface InboxPr {
   checks: string;
   /** The head commit is newer than the user's last review on this PR. */
   newSinceReview?: boolean;
+  /** The user has submitted a review on this PR. */
+  reviewedByViewer?: boolean;
 }
 
 export interface PrInbox {
@@ -38,6 +42,9 @@ export interface PrInbox {
   /** Open PRs the user has already reviewed, excluding their own and any
    *  still in reviewRequested. */
   reviewed: InboxPr[];
+  /** Open PRs of the cards in the board's review columns. Filled only while
+   *  the reviews queue is sourced from the board. */
+  reviewColumn: InboxPr[];
   at: number;
 }
 
@@ -62,21 +69,23 @@ interface SearchNode {
   baseRefName: string;
   reviewDecision: string | null;
   mergeable: string;
+  /** OPEN, CLOSED or MERGED; only looked at where the query is not is:open. */
+  state?: string;
   author: { login: string } | null;
   repository: { nameWithOwner: string };
   commits: { nodes: { commit: { committedDate?: string; statusCheckRollup: { state: string } | null } }[] };
   reviews?: { nodes: { state: string; submittedAt: string; author: { login: string } | null }[] };
 }
 
+const PR_FIELDS = `number title url isDraft updatedAt headRefName baseRefName reviewDecision mergeable state
+  author { login } repository { nameWithOwner }
+  commits(last: 1) { nodes { commit { committedDate statusCheckRollup { state } } } }
+  reviews(last: 20) { nodes { state submittedAt author { login } } }`;
+
 const QUERY = `query($q: String!) {
   viewer { login }
   search(query: $q, type: ISSUE, first: 50) {
-    nodes { ... on PullRequest {
-      number title url isDraft updatedAt headRefName baseRefName reviewDecision mergeable
-      author { login } repository { nameWithOwner }
-      commits(last: 1) { nodes { commit { committedDate statusCheckRollup { state } } } }
-      reviews(last: 20) { nodes { state submittedAt author { login } } }
-    } }
+    nodes { ... on PullRequest { ${PR_FIELDS} } }
   }
 }`;
 
@@ -106,6 +115,11 @@ export function hasNewWorkSinceReview(node: SearchNode, viewer: string): boolean
   return Boolean(last && pushed && pushed > last.submittedAt);
 }
 
+/** Whether the user has submitted a review on this PR. */
+function hasReviewFromViewer(node: SearchNode, viewer: string): boolean {
+  return (node.reviews?.nodes ?? []).some((review) => review.author?.login === viewer && review.submittedAt);
+}
+
 const newestFirst = (a: InboxPr, b: InboxPr): number => b.updatedAt.localeCompare(a.updatedAt);
 
 interface SearchResult {
@@ -127,6 +141,51 @@ async function search(qualifier: string): Promise<SearchResult> {
   };
 }
 
+// GitHub takes nothing else as an owner or repository name, and both go into
+// the query as literals.
+const REPO = /^[\w.-]+\/[\w.-]+$/;
+const BATCH = 25;
+
+/** The PR state the review screen needs, for PRs the board pointed at: one
+ *  aliased lookup each, since search cannot be handed a list of them. */
+async function prsByRef(refs: { repo: string; number: number }[], viewer: string): Promise<InboxPr[]> {
+  const prs: InboxPr[] = [];
+  for (let from = 0; from < refs.length; from += BATCH) {
+    const query = `query { ${refs.slice(from, from + BATCH).map(({ repo, number }, i) => {
+      const [owner, name] = repo.split("/");
+      return `pr${i}: repository(owner: "${owner}", name: "${name}") { pullRequest(number: ${number}) { ${PR_FIELDS} } }`;
+    }).join(" ")} }`;
+    const { stdout } = await exec("gh", ["api", "graphql", "-f", `query=${query}`], { timeout: 30_000, maxBuffer: 4 * 1024 * 1024 });
+    const repos = (JSON.parse(stdout) as { data: Record<string, { pullRequest: SearchNode | null } | null> }).data ?? {};
+    for (const entry of Object.values(repos)) {
+      const node = entry?.pullRequest;
+      // The cache the refs came from can be minutes old, so a PR merged since
+      // is only caught here.
+      if (!node || node.state !== "OPEN" || node.author?.login === viewer) continue;
+      prs.push({ ...toPr(node), newSinceReview: hasNewWorkSinceReview(node, viewer), reviewedByViewer: hasReviewFromViewer(node, viewer) });
+    }
+  }
+  return prs.sort(newestFirst);
+}
+
+/** The open PRs of the cards sitting in the board's review columns. The
+ *  tracker decides what is in the queue here; GitHub only fills in the state,
+ *  so a PR reaches it whether or not the user was asked to review. */
+async function reviewColumnPrs(viewer: string): Promise<InboxPr[]> {
+  const { reviewSource, board: boardSettings } = getSettings();
+  const board = getBoardCache();
+  if (reviewSource !== "board" || !board) return [];
+  const statusIds = new Set(board.columns.filter((c) => boardSettings.reviewColumns.includes(c.name)).flatMap((c) => c.statusIds));
+  if (statusIds.size === 0) return [];
+  const refs = new Map<string, { repo: string; number: number }>();
+  for (const issue of board.issues.filter((i) => statusIds.has(i.statusId))) {
+    const prs = await prsForIssue(issue.key, issue).catch(() => []);
+    for (const pr of prs)
+      if (pr.state === "OPEN" && REPO.test(pr.repo) && Number.isInteger(pr.number)) refs.set(prKey(pr), pr);
+  }
+  return prsByRef([...refs.values()], viewer);
+}
+
 const CACHE_KEY = "pr_inbox";
 const REFRESH_MS = 2 * 60_000;
 const listeners = new Set<(inbox: PrInbox) => void>();
@@ -142,12 +201,17 @@ export function getPrInbox(): PrInbox | undefined {
   return kvGet<PrInbox>(CACHE_KEY);
 }
 
+/** The PRs waiting on the user, from wherever the reviews queue is sourced. */
+export function prsAwaitingReview(inbox: PrInbox): InboxPr[] {
+  return getSettings().reviewSource === "board" ? inbox.reviewColumn ?? [] : inbox.reviewRequested;
+}
+
 /** The PRs the user has reviewed, minus their own and the ones still sitting
  *  in reviewRequested. */
 function reviewedByUser(reviewed: SearchResult, viewer: string, requested: InboxPr[]): InboxPr[] {
   const alreadyQueued = new Set(requested.map(prKey));
   return reviewed.nodes
-    .map((node) => ({ ...toPr(node), newSinceReview: hasNewWorkSinceReview(node, viewer) }))
+    .map((node) => ({ ...toPr(node), newSinceReview: hasNewWorkSinceReview(node, viewer), reviewedByViewer: true }))
     .filter((pr) => pr.author !== viewer && !alreadyQueued.has(prKey(pr)))
     .sort(newestFirst);
 }
@@ -160,11 +224,14 @@ function publish(inbox: PrInbox): PrInbox {
 
 export function refreshPrInbox(): Promise<PrInbox> {
   inflight ??= Promise.all([search("author:@me"), search("review-requested:@me"), search("reviewed-by:@me")])
-    .then(([mine, requested, reviewed]) => publish({
+    .then(async ([mine, requested, reviewed]) => publish({
       viewer: mine.viewer,
       mine: mine.prs,
       reviewRequested: requested.prs,
       reviewed: reviewedByUser(reviewed, mine.viewer, requested.prs),
+      // A board or GitHub hiccup here should not empty a queue that was fine
+      // a moment ago.
+      reviewColumn: await reviewColumnPrs(mine.viewer).catch(() => getPrInbox()?.reviewColumn ?? []),
       at: Date.now(),
     }))
     .finally(() => (inflight = undefined));

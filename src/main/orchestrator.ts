@@ -5,7 +5,7 @@ import { lastMessages } from "./indexer.js";
 import { canShareBoard, canSharePullRequests, canShareSession, sharedSessions, WITHHELD } from "./sharing.js";
 import { createIssue, getBoardCache, searchIssues } from "./board/board.js";
 import { boardProvider } from "./board/provider.js";
-import { attentionReasons, getPrInbox, refreshPrInbox, type InboxPr } from "./prInbox.js";
+import { attentionReasons, getPrInbox, prsAwaitingReview, refreshPrInbox, type InboxPr } from "./prInbox.js";
 import { listRepos } from "./providers.js";
 import { createTerm, sendToTerm } from "./pty.js";
 import { getSettings } from "./settings.js";
@@ -49,7 +49,7 @@ function describeInbox() {
       checkout: checkoutFor(pr.repo) ?? null,
       fixInProgress: fixes.filter((f) => f.repo === pr.repo && f.number === pr.number).map((f) => ({ problem: f.problem, term_id: f.termId })),
     })),
-    reviewRequested: inbox.reviewRequested,
+    reviewRequested: prsAwaitingReview(inbox),
     alreadyReviewed: inbox.reviewed ?? [],
   };
 }

@@ -24,8 +24,8 @@ vi.mock("../src/main/autofix.js", () => ({ runningFixes: () => [{ repo: "acme/ap
 vi.mock("../src/main/orchestrator.js", () => ({ boardLabel: () => "Jira", boardProjects: () => ["APP"], toolNames: () => ["list_sessions", "start_agent"] }));
 vi.mock("../src/main/server.js", () => ({ MCP_URL: "http://127.0.0.1:47800/api/mcp" }));
 vi.mock("../src/main/prInbox.js", async () => {
-  const { attentionReasons } = await import("../src/main/prInbox.js");
-  return { attentionReasons, getPrInbox: () => state.inbox };
+  const { attentionReasons, prsAwaitingReview } = await import("../src/main/prInbox.js");
+  return { attentionReasons, prsAwaitingReview, getPrInbox: () => state.inbox };
 });
 vi.mock("node:child_process", async () => {
   const { promisify } = await import("node:util");

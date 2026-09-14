@@ -64,7 +64,9 @@ The rail lists what needs you and every live session. The sidebar badge counts i
 
 ### Reviews page <kbd>⌘⌥4</kbd>
 
-Every pull request waiting on your review, one at a time like a mail client. Each shows the linked issue, the overview, the diff and a pinned agent helper (<kbd>a</kbd>). Approve or request changes and the queue moves on. <kbd>n</kbd> / <kbd>p</kbd> step through without leaving. Review threads collapse to one line like GitHub's, and resolved or outdated threads start collapsed.
+Every pull request waiting on your review, one at a time like a mail client. Each shows the linked issue, the overview, the diff and a pinned agent helper (<kbd>a</kbd>). Approve or request changes and the queue moves on to the next; the PR itself stays until it is merged, since an approval is not always the last of it. <kbd>n</kbd> / <kbd>p</kbd> step through without leaving. Review threads collapse to one line like GitHub's, and resolved or outdated threads start collapsed.
+
+The queue is fed either by GitHub's review requests or by a column of your board — every card sitting in it puts its open PRs in front of you, whether or not GitHub asked. Pick which in **Settings → General → Board**.
 
 ### Auto-fix
 

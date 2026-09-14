@@ -55,7 +55,7 @@ function PrList({ title, prs, current, badge, onPick }: {
 }
 
 export function ReviewsView({ visible }: { visible: boolean }) {
-  const { queue, board, loaded, reviewed: reviewedPrs, lists } = useReviewQueue();
+  const { queue, board, loaded, reviewed: reviewedPrs, lists, source, needsColumn } = useReviewQueue();
   const [index, setIndex] = useState(0);
   const [picked, setPicked] = useState<string>();
   const [rail, setRail] = useState(() => localStorage.getItem("deck.reviews.rail") !== "hidden");
@@ -66,7 +66,10 @@ export function ReviewsView({ visible }: { visible: boolean }) {
   const toggleRail = () => setRail((open) => { localStorage.setItem("deck.reviews.rail", open ? "hidden" : "visible"); return !open; });
   useEffect(() => onOpenPullRequest(setLinked), []);
 
-  const browsable = [...lists.waiting, ...lists.reviewed, ...lists.mine];
+  // A review column can hold PRs the user has already reviewed, so the
+  // section below lists only the ones the queue left out.
+  const alsoReviewed = lists.reviewed.filter((pr) => !lists.waiting.some((q) => prKey(q) === prKey(pr)));
+  const browsable = [...lists.waiting, ...alsoReviewed, ...lists.mine];
   const fromQueue = queue[Math.min(index, Math.max(queue.length - 1, 0))];
   const current = linked
     ? browsable.find((pr) => pr.repo === linked.repo && pr.number === linked.number)
@@ -145,14 +148,17 @@ export function ReviewsView({ visible }: { visible: boolean }) {
           ) : (
             <div className="flex flex-1 flex-col items-center justify-center gap-2 text-[12px] text-dim">
               <Icon name="check" size={20} className="text-green" />
-              {loaded ? "Inbox zero: no pull requests are waiting on your review." : "Waiting for GitHub…"}
+              {needsColumn
+                ? "Pick the board column the reviews queue reads in Settings → Board."
+                : loaded ? "Inbox zero: no pull requests are waiting on your review." : "Waiting for GitHub…"}
             </div>
           )}
         </div>
         {rail && (
           <aside aria-label="Open pull requests" className="flex w-[268px] shrink-0 flex-col overflow-y-auto border-l border-edge font-sans">
-            <PrList title="Needs your review" prs={lists.waiting} current={current} onPick={pick} />
-            <PrList title="You reviewed" prs={lists.reviewed} current={current} onPick={pick}
+            <PrList title={source === "board" ? "In the review column" : "Needs your review"} prs={lists.waiting} current={current} onPick={pick}
+              badge={(pr) => (pr.newSinceReview ? "new since your review" : undefined)} />
+            <PrList title="You reviewed" prs={alsoReviewed} current={current} onPick={pick}
               badge={(pr) => (pr.newSinceReview ? "new since your review" : undefined)} />
             <PrList title="Your PRs" prs={lists.mine} current={current} onPick={pick} />
             {browsable.length === 0 && <p className="px-4 py-3 text-[11px] text-dim">{loaded ? "No open pull requests." : "Waiting for GitHub…"}</p>}

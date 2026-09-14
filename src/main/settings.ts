@@ -29,6 +29,10 @@ export function getSettings(): DeckSettings {
     // Settings saved before onboarding existed belong to an install that is
     // already set up; only an empty profile gets the first-run flow.
     onboarded: stored.onboarded ?? Object.keys(stored).length > 0,
+    // Narrowing the queue to a board column was all a review column could do
+    // before the source became a choice, so a profile that set one meant the
+    // board all along.
+    reviewSource: stored.reviewSource ?? (board.reviewColumns.length > 0 ? "board" : "github"),
     board: { ...board, onMerge: { ...defaultSettings.board.onMerge, ...board.onMerge } },
     jira: { ...defaultSettings.jira, ...stored.jira },
     linear: { ...defaultSettings.linear, ...stored.linear },

@@ -20,21 +20,12 @@ const board: BoardCache = {
 const requested = [pr(3, "INI-1 add thing"), pr(2, "INI-2 other thing"), pr(1, "no key", { headRefName: "chore/x" }), pr(4, "INI-1 draft", { isDraft: true })];
 
 describe("reviewQueue", () => {
-  it("keeps every non-draft request when no review columns are configured, oldest first", () => {
-    expect(reviewQueue(requested, board, []).map((p) => p.number)).toEqual([1, 2, 3]);
-  });
-
-  it("only keeps PRs whose card sits in a review column", () => {
-    expect(reviewQueue(requested, board, ["Review"]).map((p) => p.number)).toEqual([3]);
-  });
-
-  it("drops everything when columns are configured but the board has not synced", () => {
-    expect(reviewQueue(requested, undefined, ["Review"])).toEqual([]);
+  it("queues every non-draft PR, oldest first", () => {
+    expect(reviewQueue(requested).map((p) => p.number)).toEqual([1, 2, 3]);
   });
 
   it("keeps a PR the user has already reviewed, since it is not merged yet", () => {
-    const approved = pr(2, "INI-2 other thing", { reviewDecision: "APPROVED" });
-    expect(reviewQueue([approved], board, []).map((p) => p.number)).toEqual([2]);
+    expect(reviewQueue([pr(2, "INI-2", { reviewedByViewer: true })]).map((p) => p.number)).toEqual([2]);
   });
 });
 
