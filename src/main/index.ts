@@ -125,7 +125,7 @@ let registeredHotkey: string | undefined;
 const CASCADE_OFFSET = 24;
 
 function roleFor(entry: EntryPoint): WindowRole {
-  return entry === "hotkey" && getSettings().windowMode === "panel"
+  return entry === "hotkey" && getSettings().windowMode !== "shared"
     ? "panel"
     : "main";
 }

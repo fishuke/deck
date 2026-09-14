@@ -121,12 +121,10 @@ export function Onboarding() {
               <select aria-label="Hotkey window" className={`mt-1.5 w-full ${control}`} value={settings.windowMode}
                 onChange={(e) => update({ windowMode: e.target.value as DeckSettings["windowMode"] })}>
                 <option value="shared">Shared with the Dock window</option>
-                <option value="panel">Separate window</option>
+                <option value="panel">Separate window, same tabs</option>
+                <option value="panel-own-tabs">Separate window, its own tabs</option>
               </select>
             </label>
-            <Toggle checked={settings.hotkeyOwnTabs} disabled={settings.windowMode !== "panel"} onChange={(hotkeyOwnTabs) => update({ hotkeyOwnTabs })}>
-              Hotkey window keeps its own tabs, hidden from the Dock window
-            </Toggle>
             <Toggle checked={settings.hideFromDock} onChange={(hideFromDock) => update({ hideFromDock })}>
               Keep deck out of the Dock and ⌘-Tab — the tray and the hotkey are enough
             </Toggle>

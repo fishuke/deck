@@ -104,7 +104,6 @@ export function TabProvider({ children }: { children: ReactNode }) {
   // process) finds the previous tabs still running. The list is re-read when
   // the window settings change, since they decide which tabs this window sees.
   const windowMode = settings?.windowMode;
-  const hotkeyOwnTabs = settings?.hotkeyOwnTabs;
   useEffect(() => {
     void Promise.all([window.deck.term.list(), window.deck.sessions.list()]).then(([terms, sessions]) => {
       const order: string[] = JSON.parse(localStorage.getItem("deck.tab.order") ?? "[]");
@@ -113,7 +112,7 @@ export function TabProvider({ children }: { children: ReactNode }) {
       setActiveId((active) => terms.some((term) => term.id === active) ? active : terms.at(-1)?.id);
       setReady(true);
     });
-  }, [windowMode, hotkeyOwnTabs]);
+  }, [windowMode]);
 
   useEffect(() => window.deck.sessions.onChanged((sessions) => {
     setTabs((tabs) => tabs.map((tab) => withSession(tab, sessions)));

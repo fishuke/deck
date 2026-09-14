@@ -77,9 +77,9 @@ export interface GithubSettings {
   owner: string;
 }
 
-/** Whether the hotkey shares the regular window (Dock, tray) or gets its own
- *  panel. Windows are views onto the same tabs; this never partitions terminals. */
-export type WindowMode = "shared" | "panel";
+/** Whether the hotkey shares the regular window (Dock, tray), gets a panel of
+ *  its own onto the same tabs, or a panel that keeps its tabs to itself. */
+export type WindowMode = "shared" | "panel" | "panel-own-tabs";
 
 /** Which window a terminal was opened from. */
 export type WindowRole = "main" | "panel";
@@ -134,8 +134,6 @@ export interface DeckSettings {
   github: GithubSettings;
   agentSharing: AgentSharingSettings;
   windowMode: WindowMode;
-  /** With a separate hotkey window: keep its tabs apart from the regular window's. */
-  hotkeyOwnTabs: boolean;
   /** Electron accelerator that summons/hides the window from anywhere. */
   summonHotkey: string;
   /** Master switch for the summon hotkey. */
@@ -181,7 +179,6 @@ export const defaultSettings: DeckSettings = {
   github: { owner: "" },
   agentSharing: { mode: "all", projects: [], transcripts: true, board: true, pullRequests: true },
   windowMode: "shared",
-  hotkeyOwnTabs: false,
   summonHotkey: "Alt+Space",
   summonHotkeyEnabled: true,
   summonDockToTop: true,

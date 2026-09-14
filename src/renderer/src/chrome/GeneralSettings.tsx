@@ -137,10 +137,10 @@ export function GeneralSettings() {
             <select className={`w-full ${control}`} value={settings.windowMode}
               onChange={(e) => { const v = e.target.value as DeckSettings["windowMode"]; if (v !== settings.windowMode) void update({ windowMode: v }); }}>
               <option value="shared">Shared with the Dock window</option>
-              <option value="panel">Separate window</option>
+              <option value="panel">Separate window, same tabs</option>
+              <option value="panel-own-tabs">Separate window, its own tabs</option>
             </select>
           </Field>
-          <Toggle checked={settings.hotkeyOwnTabs} disabled={settings.windowMode !== "panel"} onChange={(hotkeyOwnTabs) => void update({ hotkeyOwnTabs })}>Hotkey window keeps its own tabs, hidden from the Dock window</Toggle>
           <Toggle checked={settings.hideFromDock} onChange={(hideFromDock) => void update({ hideFromDock })}>Hide Deck from the Dock and Cmd-Tab</Toggle>
           <Toggle checked={settings.showTips} onChange={(showTips) => void update({ showTips })}>Show one-off tips about shortcuts you could use</Toggle>
         </Card>

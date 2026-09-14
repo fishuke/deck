@@ -22,8 +22,7 @@ export function windowRoleOf(contents: WebContents): WindowRole {
   return windowRoles.get(contents) ?? "main";
 }
 function visibleTo(contents: WebContents, meta: TermMeta): boolean {
-  const { windowMode, hotkeyOwnTabs } = getSettings();
-  if (windowMode !== "panel" || !hotkeyOwnTabs) return true;
+  if (getSettings().windowMode !== "panel-own-tabs") return true;
   return (meta.windowRole ?? "main") === windowRoleOf(contents);
 }
 
