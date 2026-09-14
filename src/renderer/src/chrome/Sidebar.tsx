@@ -10,14 +10,25 @@ import { useTabs, type TermTab } from "../store.js";
 import { Icon } from "../board/icons.js";
 import { useSessionSuggestions } from "./useSessionSuggestions.js";
 import { useReviewQueue } from "../lib/reviews.js";
+import { useSettings } from "../lib/useSettings.js";
 import { useAttentionCount } from "../agents/attention.js";
 import { useTips } from "../tips/TipsProvider.js";
 import type { View } from "../App.js";
 
 function SessionRow({ tab, session, index, onOpen }: { tab: TermTab; session?: AgentSession; index: number; onOpen: () => void }) {
-  const { activeId, requestCloseTab, renameTab, moveTab } = useTabs();
+  const { activeId, requestCloseTab, renameTab, moveTab, moveTabToWorkspace } = useTabs();
   const { report } = useTips();
+  const settings = useSettings();
+  const otherWorkspaces = settings?.workspaces.filter((workspace) => workspace.id !== settings.activeWorkspace) ?? [];
   const [renaming, setRenaming] = useState(false);
+  const [menu, setMenu] = useState(false);
+  const menuRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (!menu) return;
+    const dismiss = (event: MouseEvent) => { if (!menuRef.current?.contains(event.target as Node)) setMenu(false); };
+    window.addEventListener("mousedown", dismiss);
+    return () => window.removeEventListener("mousedown", dismiss);
+  }, [menu]);
   const [dropTarget, setDropTarget] = useState(false);
   const [name, setName] = useState("");
   const cwd = session?.cwd || tab.cwd;
@@ -32,10 +43,11 @@ function SessionRow({ tab, session, index, onOpen }: { tab: TermTab; session?: A
     onDragOver={(event) => { if (event.dataTransfer.types.includes("text/deck-tab")) { event.preventDefault(); setDropTarget(true); } }}
     onDragLeave={() => setDropTarget(false)}
     onDrop={(event) => { event.preventDefault(); setDropTarget(false); const id = event.dataTransfer.getData("text/deck-tab"); if (id && id !== tab.termId) moveTab(id, index); }}
-    className={`border-b px-2 py-2 ${dropTarget ? "border-t border-t-orange" : "border-edge/80"}`}>
+    className={`relative border-b px-2 py-2 ${dropTarget ? "border-t border-t-orange" : "border-edge/80"}`}>
     <div role="button" tabIndex={0} aria-label={`${title}${agent ? ` (${agentLabels[agent]})` : ""}`} aria-current={active ? "page" : undefined}
       onClick={() => { report({ action: "tab-click" }); onOpen(); }} onKeyDown={(event) => { if (event.target === event.currentTarget && event.key === "Enter") onOpen(); }}
       onDoubleClick={() => { setName(title); setRenaming(true); }}
+      onContextMenu={(event) => { event.preventDefault(); setMenu(true); }}
       className={`group flex min-h-[56px] cursor-pointer items-center gap-2.5 rounded-md border px-2.5 py-2 outline-none focus-visible:border-mut ${active ? "border-edge3 bg-card2" : "border-transparent hover:bg-card"}`}>
       <SessionIcon agent={agent} status={session?.status} color={oscColor} />
       <div className="min-w-0 flex-1">
@@ -54,6 +66,12 @@ function SessionRow({ tab, session, index, onOpen }: { tab: TermTab; session?: A
       <button aria-label={`Close ${title}`} title="Close session" className="hidden self-start text-mut hover:text-ink group-hover:block"
         onClick={(event) => { event.stopPropagation(); report({ action: "close-tab-button" }); requestCloseTab(tab.termId); }}><Icon name="x" size={11} /></button>
     </div>
+    {menu && <div ref={menuRef} role="menu" aria-label={`${title} options`} className="absolute left-3 right-3 z-50 mt-1 rounded-lg border border-edge3 bg-overlay p-1 shadow-xl">
+      <button className="menu-item" onClick={() => { setMenu(false); setName(title); setRenaming(true); }}>Rename</button>
+      {otherWorkspaces.map((workspace) => <button key={workspace.id} className="menu-item" onClick={() => { setMenu(false); moveTabToWorkspace(tab.termId, workspace.id); }}>Move to {workspace.name}</button>)}
+      <div className="my-1 border-t border-edge2" />
+      <button className="menu-item" onClick={() => { setMenu(false); requestCloseTab(tab.termId); }}>Close</button>
+    </div>}
   </div>;
 }
 

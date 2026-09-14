@@ -15,6 +15,9 @@ export interface AgentSession {
   term_id: string | null;
   transcript_path: string | null;
   issue_key: string | null;
+  /** Workspace of the terminal the session ran in; null for sessions started
+   *  outside deck or before workspaces existed. */
+  workspace: string | null;
   /** The agent's decisions summary, set when it asks for review before pushing. */
   review_note: string | null;
   started_at: number;
@@ -27,6 +30,26 @@ const pendingLinks = new Map<string, string>();
 
 export function linkTermToIssue(termId: string, issueKey: string): void {
   pendingLinks.set(termId, issueKey);
+}
+
+// Hooks only carry the terminal id; the terminal's workspace is remembered
+// here so its sessions land in the right one.
+const termWorkspaces = new Map<string, string>();
+
+export function linkTermToWorkspace(termId: string, workspace: string): void {
+  termWorkspaces.set(termId, workspace);
+}
+
+/** The workspace a terminal was opened in or moved to, as main knows it. */
+export function termWorkspace(termId: string): string | undefined {
+  return termWorkspaces.get(termId);
+}
+
+/** Moves a terminal's sessions along with it to another workspace. */
+export function moveTermSessions(termId: string, workspace: string): void {
+  termWorkspaces.set(termId, workspace);
+  openDb().prepare("UPDATE agent_sessions SET workspace = ? WHERE term_id = ?").run(workspace, termId);
+  notify();
 }
 
 /** The deck-review skill posts here when the agent pauses for user
@@ -130,8 +153,8 @@ export function applyHook(payload: HookPayload, termId: string | null, agent: Ag
   // turn's own PostToolUse/Stop events must not downgrade it. It clears when
   // the user replies (UserPromptSubmit) or the session ends.
   db.prepare(
-    `INSERT INTO agent_sessions (session_id, agent, cwd, status, term_id, transcript_path, issue_key, started_at, updated_at)
-     VALUES (@id, @agent, @cwd, @status, @termId, @transcript, @issueKey, @now, @now)
+    `INSERT INTO agent_sessions (session_id, agent, cwd, status, term_id, transcript_path, issue_key, workspace, started_at, updated_at)
+     VALUES (@id, @agent, @cwd, @status, @termId, @transcript, @issueKey, @workspace, @now, @now)
      ON CONFLICT(session_id) DO UPDATE SET
        status = CASE
          WHEN agent_sessions.status = 'needs_review' AND @event IN ('PreToolUse', 'PostToolUse', 'Stop', 'Interrupt')
@@ -146,7 +169,8 @@ export function applyHook(payload: HookPayload, termId: string | null, agent: Ag
        cwd = COALESCE(NULLIF(@cwd, ''), cwd),
        term_id = COALESCE(@termId, term_id),
        transcript_path = COALESCE(@transcript, transcript_path),
-       issue_key = COALESCE(agent_sessions.issue_key, @issueKey)`,
+       issue_key = COALESCE(agent_sessions.issue_key, @issueKey),
+       workspace = COALESCE(agent_sessions.workspace, @workspace)`,
   ).run({
     id,
     agent,
@@ -156,6 +180,7 @@ export function applyHook(payload: HookPayload, termId: string | null, agent: Ag
     termId,
     transcript: payload.transcript_path ?? null,
     issueKey: linked,
+    workspace: termId ? (termWorkspaces.get(termId) ?? null) : null,
     now,
   });
 
@@ -185,15 +210,15 @@ export function applyHook(payload: HookPayload, termId: string | null, agent: Ag
   notify();
 }
 
-export function registerAgentTerm(term: { id: string; cwd: string; agent?: Agent; sessionId?: string; prompt?: string; issueKey?: string }): void {
+export function registerAgentTerm(term: { id: string; cwd: string; agent?: Agent; sessionId?: string; prompt?: string; issueKey?: string; workspace?: string }): void {
   if (!term.agent) return;
   // A fast startup hook can arrive before the create response.
   if (openDb().prepare("SELECT 1 FROM agent_sessions WHERE term_id = ? AND status != 'ended' AND session_id NOT LIKE 'pending:%'").get(term.id)) return;
   const id = term.sessionId ?? `pending:${term.id}`;
-  openDb().prepare(`INSERT INTO agent_sessions (session_id, agent, cwd, title, status, term_id, issue_key, started_at, updated_at)
-    VALUES (?, ?, ?, ?, 'idle', ?, ?, ?, ?)
+  openDb().prepare(`INSERT INTO agent_sessions (session_id, agent, cwd, title, status, term_id, issue_key, workspace, started_at, updated_at)
+    VALUES (?, ?, ?, ?, 'idle', ?, ?, ?, ?, ?)
     ON CONFLICT(session_id) DO UPDATE SET agent = excluded.agent, term_id = excluded.term_id, status = 'idle', updated_at = excluded.updated_at`)
-    .run(id, term.agent, term.cwd, term.prompt?.slice(0, 120) ?? null, term.id, term.issueKey ?? null, Date.now(), Date.now());
+    .run(id, term.agent, term.cwd, term.prompt?.slice(0, 120) ?? null, term.id, term.issueKey ?? null, term.workspace ?? termWorkspaces.get(term.id) ?? null, Date.now(), Date.now());
   notify();
 }
 
@@ -211,6 +236,7 @@ export function updateForegroundSession(term: { id: string; cwd: string; foregro
 
 export function endTermSessions(termId: string): void {
   pendingLinks.delete(termId);
+  termWorkspaces.delete(termId);
   openDb().prepare("DELETE FROM agent_sessions WHERE session_id = ?").run(`pending:${termId}`);
   openDb().prepare("UPDATE agent_sessions SET status = 'ended', term_id = NULL, updated_at = ? WHERE term_id = ?")
     .run(Date.now(), termId);

@@ -42,6 +42,7 @@ export function BoardView() {
   const [board, setBoard] = useState<BoardCache>();
   const [settings, setSettings] = useState<DeckSettings>();
   const [syncing, setSyncing] = useState(false);
+  const [syncError, setSyncError] = useState<string>();
   const [selected, setSelected] = useState<BoardIssue>();
   const [diffPr, setDiffPr] = useState<IssuePr>();
   const [filters, setFilters] = useState<BoardFilters>(() => ({
@@ -66,7 +67,9 @@ export function BoardView() {
   useEffect(() => {
     void window.deck.getSettings().then(setSettings);
     void window.deck.board.get().then(setBoard);
-    return window.deck.board.onChanged(setBoard);
+    const offChanged = window.deck.board.onChanged((next) => { setBoard(next); setSyncError(undefined); });
+    const offError = window.deck.board.onSyncError(setSyncError);
+    return () => { offChanged(); offError(); };
   }, []);
 
   // Mouse-back closes the top overlay before the view history moves. Refs
@@ -189,7 +192,7 @@ export function BoardView() {
     <div className="flex min-h-0 min-w-0 flex-1 flex-col">
       <Header
         title="Board"
-        sub={board ? `${board.boardName} · ${board.issues.length} issues` : "syncing…"}
+        sub={syncError ? "sync failed" : board ? `${board.boardName} · ${board.issues.length} issues` : "syncing…"}
         right={
           <div className="flex items-center gap-4">
             <button
@@ -205,6 +208,24 @@ export function BoardView() {
           </div>
         }
       />
+      {syncError && board && <div role="alert" className="border-b border-edge bg-red/10 px-7 py-2 font-sans text-xs text-red">{syncError}</div>}
+      {syncError && !board && (
+        <div role="alert" className="flex min-h-0 flex-1 items-start justify-center overflow-y-auto px-7 py-8 font-sans">
+          <div className="max-w-[560px] rounded-xl border border-edge2 bg-panel p-5">
+            <div className="flex items-center gap-3">
+              <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-red/10 text-red"><Icon name="issue" size={17} /></span>
+              <div>
+                <h2 className="text-sm font-semibold text-ink">Deck can't reach your {settings ? boardProviderLabels[settings.board.provider] : ""} board</h2>
+                <p className="mt-0.5 text-[11px] text-mut">Nothing is shown until a sync succeeds.</p>
+              </div>
+            </div>
+            <p className="mt-4 rounded-md bg-card px-3 py-2 font-mono text-[11px] leading-5 text-red">{syncError}</p>
+            {settings && <p className="mt-3 text-[11px] leading-5 text-mut">{boardConnectionHelp(settings.board.provider).help}</p>}
+            <button onClick={async () => { setSyncing(true); setBoard((await window.deck.board.sync()) ?? board); setSyncing(false); }}
+              className="mt-4 rounded-md border border-edge2 px-3 py-1.5 text-xs text-body hover:border-edge3">{syncing ? "Retrying…" : "Retry sync"}</button>
+          </div>
+        </div>
+      )}
       {board && (
         <BoardFilterBar
           issues={board.issues}

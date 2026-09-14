@@ -63,6 +63,8 @@ interface TabStore {
   setTabColor: (termId: string, color: string | null) => void;
   renameTab: (termId: string, title: string) => void;
   moveTab: (termId: string, index: number) => void;
+  /** Hands the terminal to another workspace; it leaves this one's tabs without closing. */
+  moveTabToWorkspace: (termId: string, workspace: string) => void;
 }
 
 const Ctx = createContext<TabStore | null>(null);
@@ -102,8 +104,10 @@ export function TabProvider({ children }: { children: ReactNode }) {
 
   // Terminals live in the pty host, so a reload (or a restarted main
   // process) finds the previous tabs still running. The list is re-read when
-  // the window settings change, since they decide which tabs this window sees.
+  // the window settings or the workspace change, since they decide which
+  // tabs this window sees.
   const windowMode = settings?.windowMode;
+  const workspace = settings?.activeWorkspace;
   useEffect(() => {
     void Promise.all([window.deck.term.list(), window.deck.sessions.list()]).then(([terms, sessions]) => {
       const order: string[] = JSON.parse(localStorage.getItem("deck.tab.order") ?? "[]");
@@ -112,7 +116,7 @@ export function TabProvider({ children }: { children: ReactNode }) {
       setActiveId((active) => terms.some((term) => term.id === active) ? active : terms.at(-1)?.id);
       setReady(true);
     });
-  }, [windowMode]);
+  }, [windowMode, workspace]);
 
   useEffect(() => window.deck.sessions.onChanged((sessions) => {
     setTabs((tabs) => tabs.map((tab) => withSession(tab, sessions)));
@@ -206,6 +210,16 @@ export function TabProvider({ children }: { children: ReactNode }) {
     });
   }, []);
 
+  const moveTabToWorkspace = useCallback((termId: string, workspace: string) => {
+    window.deck.term.moveToWorkspace(termId, workspace);
+    setTabs((tabs) => {
+      const i = tabs.findIndex((t) => t.termId === termId);
+      const next = tabs.filter((t) => t.termId !== termId);
+      setActiveId((active) => (active === termId ? next[Math.min(i, next.length - 1)]?.termId : active));
+      return next;
+    });
+  }, []);
+
   useEffect(() => window.deck.term.onCwd((termId, cwd) => {
     setTabs((tabs) => tabs.map((tab) => tab.termId === termId ? { ...tab, cwd } : tab));
   }), []);
@@ -222,8 +236,8 @@ export function TabProvider({ children }: { children: ReactNode }) {
   useEffect(() => window.deck.term.onExit((id) => closeTab(id, false)), [closeTab]);
 
   const store = useMemo<TabStore>(
-    () => ({ tabs, activeId, ready, newTab, closeTab, requestCloseTab, worktreeClose, dismissWorktreeClose, reopenTab, focusTab: setActiveId, setTitle, setTabColor, renameTab, moveTab }),
-    [tabs, activeId, ready, newTab, closeTab, requestCloseTab, worktreeClose, dismissWorktreeClose, reopenTab, setTitle, setTabColor, renameTab, moveTab],
+    () => ({ tabs, activeId, ready, newTab, closeTab, requestCloseTab, worktreeClose, dismissWorktreeClose, reopenTab, focusTab: setActiveId, setTitle, setTabColor, renameTab, moveTab, moveTabToWorkspace }),
+    [tabs, activeId, ready, newTab, closeTab, requestCloseTab, worktreeClose, dismissWorktreeClose, reopenTab, setTitle, setTabColor, renameTab, moveTab, moveTabToWorkspace],
   );
   return <Ctx.Provider value={store}>{children}</Ctx.Provider>;
 }

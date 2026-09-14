@@ -1,10 +1,10 @@
 import { describe, expect, it, vi } from "vitest";
 
-const state = vi.hoisted(() => ({ queries: [] as string[], stored: undefined as unknown }));
+const state = vi.hoisted(() => ({ queries: [] as string[], stored: undefined as unknown, repos: [] as string[] }));
 vi.mock("../src/main/db.js", () => ({ kvGet: () => state.stored, kvSet: (_k: string, v: unknown) => (state.stored = v) }));
 vi.mock("../src/main/settings.js", async () => {
   const { defaultSettings } = await import("../src/shared/settings.js");
-  return { getSettings: () => ({ ...defaultSettings, github: { owner: "acme" } }) };
+  return { getSettings: () => ({ ...defaultSettings, github: { ...defaultSettings.github, owner: "acme", repos: state.repos } }) };
 });
 vi.mock("node:child_process", async () => {
   const { promisify } = await import("node:util");
@@ -59,6 +59,13 @@ describe("PR inbox", () => {
     expect(inbox.reviewRequested[0]).toMatchObject({ number: 4, author: "teammate" });
     expect(getPrInbox()).toEqual(inbox);
     expect(seen).toEqual([inbox]);
+  });
+  it("narrows to the listed repositories instead of the whole owner", async () => {
+    state.repos = ["deck", "other/tool"];
+    state.queries = [];
+    await refreshPrInbox();
+    expect(state.queries[0]).toBe("q=is:pr is:open archived:false author:@me repo:acme/deck repo:other/tool");
+    state.repos = [];
   });
   it("keeps every open PR the user has reviewed, flagging the ones pushed to since", async () => {
     const inbox = await refreshPrInbox();

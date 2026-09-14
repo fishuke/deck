@@ -7,7 +7,7 @@ const state = vi.hoisted(() => ({ directory: "" }));
 vi.mock("electron", () => ({ app: { getPath: () => state.directory } }));
 state.directory = fs.mkdtempSync(path.join(os.tmpdir(), "deck-test-"));
 const { openDb } = await import("../src/main/db.js");
-const { applyHook, listSessions, linkTermToIssue, registerAgentTerm, requestReview, endTermSessions, updateForegroundSession } = await import("../src/main/sessions.js");
+const { applyHook, listSessions, linkTermToIssue, linkTermToWorkspace, moveTermSessions, registerAgentTerm, requestReview, endTermSessions, updateForegroundSession } = await import("../src/main/sessions.js");
 const { indexFile, searchConversations, sessionMessages } = await import("../src/main/indexer.js");
 
 beforeEach(() => {
@@ -39,6 +39,21 @@ describe("provider session lifecycle", () => {
     updateForegroundSession({ id: "shell", cwd: "/repo", foregroundProcess: "/usr/local/bin/codex" });
     updateForegroundSession({ id: "shell", cwd: "/repo", foregroundProcess: "claude" });
     expect(listSessions()).toEqual([expect.objectContaining({ agent: "claude", status: "idle" })]);
+  });
+  it("files a session under the workspace its terminal was opened in", () => {
+    linkTermToWorkspace("term", "saba");
+    registerAgentTerm({ id: "term", cwd: "/repo", agent: "claude", workspace: "saba" });
+    applyHook({ session_id: "s1", hook_event_name: "UserPromptSubmit", prompt: "Hi", cwd: "/repo" }, "term");
+    applyHook({ session_id: "outside", hook_event_name: "UserPromptSubmit", prompt: "Hi", cwd: "/elsewhere" }, null);
+    expect(listSessions().find((s) => s.session_id === "s1")?.workspace).toBe("saba");
+    expect(listSessions().find((s) => s.session_id === "outside")?.workspace).toBeNull();
+  });
+  it("moves a terminal's sessions to another workspace, and files later hooks there", () => {
+    linkTermToWorkspace("term", "saba");
+    applyHook({ session_id: "s1", hook_event_name: "UserPromptSubmit", prompt: "Hi", cwd: "/repo" }, "term");
+    moveTermSessions("term", "convozy");
+    applyHook({ session_id: "s2", hook_event_name: "UserPromptSubmit", prompt: "Hi again", cwd: "/repo" }, "term");
+    expect(listSessions().map((s) => s.workspace)).toEqual(["convozy", "convozy"]);
   });
   it("links Codex to its terminal and ticket without duplicating the pending row", () => {
     registerAgentTerm({ id: "term", cwd: "/repo", agent: "codex", issueKey: "ABC-1" });

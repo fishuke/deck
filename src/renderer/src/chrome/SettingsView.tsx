@@ -1,12 +1,14 @@
 import { AppearanceSettings, PluginsSettings } from "../extensions/AppearanceSettings.js";
 import { GeneralSettings } from "./GeneralSettings.js";
 import { KeybindsSettings } from "./KeybindsSettings.js";
+import { WorkspaceSettings } from "./WorkspaceSettings.js";
 
 export const settingsSections = [
   { id: "appearance", label: "Appearance" },
   { id: "plugins", label: "Plugins" },
   { id: "keybinds", label: "Keybinds" },
-  { id: "general", label: "General & integrations" },
+  { id: "workspaces", label: "Workspaces" },
+  { id: "general", label: "General" },
 ] as const;
 export type SettingsSection = (typeof settingsSections)[number]["id"];
 
@@ -20,6 +22,7 @@ export function SettingsView({ section, onSection }: { section: SettingsSection;
       {section === "appearance" && <AppearanceSettings />}
       {section === "plugins" && <PluginsSettings />}
       {section === "keybinds" && <KeybindsSettings />}
+      {section === "workspaces" && <WorkspaceSettings />}
       {section === "general" && <GeneralSettings />}
     </div>
   );

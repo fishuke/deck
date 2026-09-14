@@ -68,6 +68,10 @@ Every pull request waiting on your review, one at a time like a mail client. Eac
 
 The queue is fed either by GitHub's review requests or by a column of your board — every card sitting in it puts its open PRs in front of you, whether or not GitHub asked. Pick which in **Settings → General → Board**.
 
+### Workspaces
+
+One per client or company. Each workspace has its own tracker connection, GitHub owner, reviews-queue source and folders, and its own terminal tabs and agent sessions (right-click a tab to rename it or move it to another workspace); the board, the review queue, the PR inbox and the sidebar follow whichever is active. Switch from the titlebar, ⌘K (`Workspace: …`) or **Settings → Workspaces**. Everything about Deck itself (theme, hotkey, agents, auto-fix) is shared and lives in **Settings → General**.
+
 ### Auto-fix
 
 Opt-in, off by default. Once enabled in **Settings → General**, Deck starts a fix agent in the repo's local checkout when CI fails or a PR of yours gets merge conflicts, once per push. The agent stops with the diff and waits for your approval before pushing unless you let it push unattended.

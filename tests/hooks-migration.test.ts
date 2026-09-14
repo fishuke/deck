@@ -67,6 +67,6 @@ describe("database upgrade", () => {
     expect(db.prepare("SELECT session_id FROM agent_sessions").get()).toEqual({ session_id: "old-claude" });
     expect(db.prepare("SELECT agent FROM conv_sessions").get()).toEqual({ agent: "claude" });
     expect(db.prepare("SELECT text FROM conv_fts WHERE conv_fts MATCH 'searchable'").get()).toEqual({ text: "searchable history" });
-    expect(db.pragma("user_version", { simple: true })).toBe(6);
+    expect(db.pragma("user_version", { simple: true })).toBe(7);
   });
 });

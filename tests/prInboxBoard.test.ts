@@ -11,7 +11,7 @@ vi.mock("../src/main/settings.js", async () => {
   return {
     getSettings: () => ({
       ...defaultSettings,
-      github: { owner: "acme" },
+      github: { ...defaultSettings.github, owner: "acme" },
       reviewSource: "board",
       board: { ...defaultSettings.board, reviewColumns: ["Review"] },
     }),

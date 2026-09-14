@@ -19,6 +19,8 @@ export interface TermMeta extends AgentLaunch {
   command?: string;
   issueKey?: string;
   windowRole?: WindowRole;
+  /** Workspace the terminal was opened in; only that workspace lists it. */
+  workspace?: string;
 }
 
 export interface SpawnRequest extends AgentLaunch {
@@ -29,6 +31,7 @@ export interface SpawnRequest extends AgentLaunch {
   command?: string;
   issueKey?: string;
   windowRole?: WindowRole;
+  workspace?: string;
 }
 
 export type ClientMessage =
@@ -38,6 +41,7 @@ export type ClientMessage =
   | { type: "input"; id: string; data: string }
   | { type: "resize"; id: string; cols: number; rows: number }
   | { type: "kill"; id: string }
+  | { type: "workspace"; id: string; workspace: string }
   | { type: "shutdown" };
 
 export type HostMessage =
@@ -98,7 +102,7 @@ function create(spawn: SpawnRequest): TermMeta {
     env: { ...spawn.env, DECK_TERM_ID: id },
   });
   const shell = spawn.shell.split("/").pop();
-  const meta: TermMeta = { id, cwd: spawn.cwd, foregroundProcess: proc.process, busy: proc.process !== shell, command: spawn.command, issueKey: spawn.issueKey, agent: spawn.agent, sessionId: spawn.sessionId, prompt: spawn.prompt, windowRole: spawn.windowRole };
+  const meta: TermMeta = { id, cwd: spawn.cwd, foregroundProcess: proc.process, busy: proc.process !== shell, command: spawn.command, issueKey: spawn.issueKey, agent: spawn.agent, sessionId: spawn.sessionId, prompt: spawn.prompt, windowRole: spawn.windowRole, workspace: spawn.workspace };
   const term: Term = { proc, meta, shell, chunks: [], buffered: 0 };
 
   proc.onData((data) => {
@@ -170,6 +174,11 @@ function handle(socket: net.Socket, msg: ClientMessage): void {
     case "kill":
       terms.get(msg.id)?.proc.kill();
       return;
+    case "workspace": {
+      const term = terms.get(msg.id);
+      if (term) term.meta.workspace = msg.workspace;
+      return;
+    }
     case "shutdown":
       for (const t of terms.values()) t.proc.kill();
       server.close();

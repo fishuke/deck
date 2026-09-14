@@ -118,10 +118,15 @@ const api = {
     sync: (): Promise<BoardCache | undefined> => ipcRenderer.invoke("board:sync"),
     move: (key: string, column: string): Promise<BoardCache> =>
       ipcRenderer.invoke("board:move", key, column),
-    onChanged: (cb: (b: BoardCache) => void): (() => void) => {
-      const listener = (_e: unknown, b: BoardCache) => cb(b);
+    onChanged: (cb: (b: BoardCache | undefined) => void): (() => void) => {
+      const listener = (_e: unknown, b: BoardCache | undefined) => cb(b);
       ipcRenderer.on("board:changed", listener);
       return () => ipcRenderer.removeListener("board:changed", listener);
+    },
+    onSyncError: (cb: (message: string) => void): (() => void) => {
+      const listener = (_e: unknown, message: string) => cb(message);
+      ipcRenderer.on("board:error", listener);
+      return () => ipcRenderer.removeListener("board:error", listener);
     },
   },
   files: {
@@ -225,8 +230,8 @@ const api = {
   inbox: {
     get: (): Promise<PrInbox | undefined> => ipcRenderer.invoke("inbox:get"),
     refresh: (): Promise<PrInbox | undefined> => ipcRenderer.invoke("inbox:refresh"),
-    onChanged: (cb: (inbox: PrInbox) => void): (() => void) => {
-      const listener = (_e: unknown, inbox: PrInbox) => cb(inbox);
+    onChanged: (cb: (inbox: PrInbox | undefined) => void): (() => void) => {
+      const listener = (_e: unknown, inbox: PrInbox | undefined) => cb(inbox);
       ipcRenderer.on("inbox:changed", listener);
       return () => ipcRenderer.removeListener("inbox:changed", listener);
     },
@@ -246,6 +251,7 @@ const api = {
     resize: (id: string, cols: number, rows: number): void =>
       ipcRenderer.send("term:resize", id, cols, rows),
     kill: (id: string): void => ipcRenderer.send("term:kill", id),
+    moveToWorkspace: (id: string, workspace: string): void => ipcRenderer.send("term:workspace", id, workspace),
     /** Absolute path of a file dragged in from Finder; only the preload may read it. */
     pathForFile: (file: File): string => webUtils.getPathForFile(file),
     onData: (cb: (id: string, data: string, sequence: number) => void): (() => void) => {

@@ -7,9 +7,9 @@ import os from "node:os";
 import path from "node:path";
 import { SERVER_PORT } from "./port.js";
 import type { ClientMessage, HostMessage, SpawnRequest, TermMeta } from "./ptyHost.js";
-import { clearTermLinks, linkTermToIssue, registerAgentTerm, endTermSessions, updateForegroundSession } from "./sessions.js";
+import { clearTermLinks, linkTermToIssue, linkTermToWorkspace, moveTermSessions, registerAgentTerm, endTermSessions, termWorkspace, updateForegroundSession } from "./sessions.js";
 import { getSettings } from "./settings.js";
-import type { WindowRole } from "../shared/settings.js";
+import { workspaceOf, type WindowRole } from "../shared/settings.js";
 import { LegacyAgentDetector } from "./legacyAgentDetection.js";
 
 /** Role of each renderer, so terminals can be tagged with the window that
@@ -21,8 +21,14 @@ export function setWindowRole(contents: WebContents, role: WindowRole): void {
 export function windowRoleOf(contents: WebContents): WindowRole {
   return windowRoles.get(contents) ?? "main";
 }
+/** Terminals belong to the workspace they were opened in or moved to, and
+ *  with own-tab panels to the window that opened them. Main's own record of
+ *  the workspace wins over the host's: a host surviving a dev restart may
+ *  predate the stamp. */
 function visibleTo(contents: WebContents, meta: TermMeta): boolean {
-  if (getSettings().windowMode !== "panel-own-tabs") return true;
+  const { windowMode, activeWorkspace, workspaces } = getSettings();
+  if (workspaceOf(termWorkspace(meta.id) ?? meta.workspace, workspaces) !== activeWorkspace) return false;
+  if (windowMode !== "panel-own-tabs") return true;
   return (meta.windowRole ?? "main") === windowRoleOf(contents);
 }
 
@@ -99,6 +105,7 @@ function spawnRequest(opts: TermCreateOptions): SpawnRequest {
     prompt: opts.prompt,
     issueKey: opts.issueKey,
     windowRole: opts.windowRole,
+    workspace: getSettings().activeWorkspace,
   };
 }
 
@@ -288,6 +295,7 @@ export async function startPtyHost(): Promise<void> {
   // Terminals that lived through the restart keep their ticket link and
   // session rows; only the ones that didn't get unlinked.
   for (const t of terms) if (t.issueKey) linkTermToIssue(t.id, t.issueKey);
+  for (const t of terms) if (t.workspace) linkTermToWorkspace(t.id, t.workspace);
   clearTermLinks(terms.map((t) => t.id));
   for (const term of terms) if (term.foregroundProcess) updateForegroundSession(term);
   stopLegacyDetection = startLegacyDetection(client);
@@ -306,6 +314,12 @@ export async function startPtyHost(): Promise<void> {
     endTermSessions(id);
     client!.send({ type: "kill", id });
   });
+  // The terminal keeps running; it just lists under the other workspace from
+  // now on, its sessions with it.
+  ipcMain.on("term:workspace", (_e, id: string, workspace: string) => {
+    client!.send({ type: "workspace", id, workspace });
+    moveTermSessions(id, workspace);
+  });
 }
 
 /** Opens a terminal (optionally running an agent) and tells every window about it. */
@@ -313,8 +327,9 @@ export async function createTerm(opts: TermCreateOptions = {}): Promise<TermMeta
   const spawn = spawnRequest(opts);
   const reply = await client!.request<"created">({ type: "create", spawn });
   // Hosts surviving a dev restart may predate structured agent metadata.
-  const meta = { ...reply.meta, agent: spawn.agent, sessionId: spawn.sessionId, prompt: spawn.prompt };
+  const meta = { ...reply.meta, agent: spawn.agent, sessionId: spawn.sessionId, prompt: spawn.prompt, workspace: spawn.workspace };
   if (meta.issueKey) linkTermToIssue(meta.id, meta.issueKey);
+  if (meta.workspace) linkTermToWorkspace(meta.id, meta.workspace);
   registerAgentTerm(meta);
   for (const window of BrowserWindow.getAllWindows()) if (visibleTo(window.webContents, meta)) window.webContents.send("term:created", meta);
   return meta;

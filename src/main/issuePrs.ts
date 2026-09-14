@@ -1,6 +1,7 @@
 import { kvGet, kvSet } from "./db.js";
 import { searchPrsForIssue, type IssuePr } from "./github.js";
 import { linkedPullRequests, onBoardChanged, type BoardIssue } from "./board/board.js";
+import { getSettings } from "./settings.js";
 
 // PRs per board issue, kept warm in the background so opening a card never
 // waits on a network round trip. The tracker's own PR links are the source;
@@ -15,13 +16,13 @@ interface Entry {
   at: number;
 }
 
-const CACHE_KEY = "issue_prs";
+const cacheKey = () => `issue_prs@${getSettings().activeWorkspace}`;
 const FRESH_MS = 5 * 60_000;
 const listeners = new Set<(key: string, prs: IssuePr[]) => void>();
 const inflight = new Map<string, Promise<IssuePr[]>>();
 
 function readCache(): Record<string, Entry> {
-  return kvGet<Record<string, Entry>>(CACHE_KEY) ?? {};
+  return kvGet<Record<string, Entry>>(cacheKey()) ?? {};
 }
 
 export function onPrsChanged(
@@ -62,7 +63,7 @@ function refresh(issue: BoardIssue): Promise<IssuePr[]> {
     .then((prs) => {
       const cache = readCache();
       cache[issue.key] = { prs, issueUpdated: issue.updated, at: Date.now() };
-      kvSet(CACHE_KEY, cache);
+      kvSet(cacheKey(), cache);
       for (const cb of listeners) cb(issue.key, prs);
       return prs;
     })
@@ -101,7 +102,7 @@ async function warm(issues: BoardIssue[]): Promise<void> {
     Object.entries(cache).filter(([key]) => onBoard.has(key)),
   );
   if (Object.keys(kept).length !== Object.keys(cache).length)
-    kvSet(CACHE_KEY, kept);
+    kvSet(cacheKey(), kept);
   for (const issue of issues) {
     if (isStale(readCache()[issue.key], issue))
       await refresh(issue).catch(() => {});

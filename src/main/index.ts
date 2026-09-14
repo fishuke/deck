@@ -100,6 +100,7 @@ import {
   getBoardCache,
   moveIssue,
   onBoardChanged,
+  onBoardSyncError,
   startBoardSync,
   syncBoard,
 } from "./board/board.js";
@@ -474,6 +475,7 @@ app.whenReady().then(async () => {
   onPrsChanged((key, prs) => broadcast("prs:changed", key, prs));
   startBoardSync();
   onBoardChanged((b) => broadcast("board:changed", b));
+  onBoardSyncError((message) => broadcast("board:error", message));
   ipcMain.handle("board:get", () => getBoardCache());
   ipcMain.handle("board:columns", () => fetchBoardColumns());
   ipcMain.handle("board:move", (_e, key: string, column: string) =>
@@ -577,6 +579,14 @@ app.whenReady().then(async () => {
   ipcMain.handle("settings:update", (_e, patch: Partial<DeckSettings>) => {
     const next = updateSettings(patch);
     broadcast("settings:changed", next);
+    // A workspace switch shows the new workspace's last board and inbox at
+    // once, then fetches fresh ones.
+    if ("activeWorkspace" in patch || "workspaces" in patch) {
+      broadcast("board:changed", getBoardCache());
+      broadcast("inbox:changed", getPrInbox());
+      void syncBoard().catch(() => {});
+      void refreshPrInbox().catch(() => {});
+    }
     if ("summonHotkey" in patch || "summonHotkeyEnabled" in patch)
       applyHotkey();
     if ("summonHeightRatio" in patch) quakeHeightRatio = undefined;

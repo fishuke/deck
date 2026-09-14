@@ -2,6 +2,7 @@ import { execFile } from "node:child_process";
 import { promisify } from "node:util";
 import { prKey } from "../shared/prs.js";
 import { getBoardCache } from "./board/board.js";
+import { githubScope } from "./github.js";
 import { kvGet, kvSet } from "./db.js";
 import { prsForIssue } from "./issuePrs.js";
 import { getSettings } from "./settings.js";
@@ -129,8 +130,7 @@ interface SearchResult {
 }
 
 async function search(qualifier: string): Promise<SearchResult> {
-  const owner = getSettings().github.owner;
-  const q = `is:pr is:open archived:false ${qualifier}${owner ? ` user:${owner}` : ""}`;
+  const q = `is:pr is:open archived:false ${qualifier} ${githubScope()}`.trim();
   const { stdout } = await exec("gh", ["api", "graphql", "-f", `query=${QUERY}`, "-f", `q=${q}`], { timeout: 30_000, maxBuffer: 4 * 1024 * 1024 });
   const data = (JSON.parse(stdout) as { data: { viewer: { login: string }; search: { nodes: SearchNode[] } } }).data;
   const nodes = data.search.nodes.filter((node) => node.number);
@@ -186,7 +186,7 @@ async function reviewColumnPrs(viewer: string): Promise<InboxPr[]> {
   return prsByRef([...refs.values()], viewer);
 }
 
-const CACHE_KEY = "pr_inbox";
+const cacheKey = () => `pr_inbox@${getSettings().activeWorkspace}`;
 const REFRESH_MS = 2 * 60_000;
 const listeners = new Set<(inbox: PrInbox) => void>();
 let timer: NodeJS.Timeout | undefined;
@@ -198,7 +198,7 @@ export function onPrInboxChanged(cb: (inbox: PrInbox) => void): () => void {
 }
 
 export function getPrInbox(): PrInbox | undefined {
-  return kvGet<PrInbox>(CACHE_KEY);
+  return kvGet<PrInbox>(cacheKey());
 }
 
 /** The PRs waiting on the user, from wherever the reviews queue is sourced. */
@@ -217,7 +217,7 @@ function reviewedByUser(reviewed: SearchResult, viewer: string, requested: Inbox
 }
 
 function publish(inbox: PrInbox): PrInbox {
-  kvSet(CACHE_KEY, inbox);
+  kvSet(cacheKey(), inbox);
   for (const cb of listeners) cb(inbox);
   return inbox;
 }

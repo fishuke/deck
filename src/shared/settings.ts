@@ -81,6 +81,9 @@ export interface AgentSharingSettings {
 export interface GithubSettings {
   /** Org/user that scopes PR search; empty searches all of GitHub. */
   owner: string;
+  /** Narrows further to these repositories: names under the owner, or
+   *  owner/name. Empty means every repository of the owner. */
+  repos: string[];
 }
 
 /** Whether the hotkey shares the regular window (Dock, tray), gets a panel of
@@ -125,14 +128,10 @@ export const askModels = [
   { id: "haiku", label: "Haiku" },
 ] as const;
 
-export interface DeckSettings {
-  /** Shortcut overrides by command; missing commands use the defaults. */
-  keybinds: Partial<Keybinds>;
-  defaultAgent: Agent;
-  /** Claude model alias or id used by deck's own orchestrator turns. */
-  askModel: string;
-  defaultView: DefaultView;
-  autoFix: AutoFixSettings;
+/** The settings that differ per client or company: which tracker and GitHub
+ *  owner deck talks to, where the code lives. Everything else in DeckSettings
+ *  is about deck itself and is shared by every workspace. */
+export interface WorkspaceSettings {
   /** Where the reviews queue comes from; `board.reviewColumns` names the
    *  columns the board source reads. */
   reviewSource: ReviewSource;
@@ -141,6 +140,44 @@ export interface DeckSettings {
   linear: LinearSettings;
   githubProjects: GithubProjectsSettings;
   github: GithubSettings;
+  /** Directories deck treats as repo roots (search fallbacks, repo pickers). */
+  repoRoots: string[];
+  /** Folder new terminals fall back to. Supports ~. */
+  defaultCwd: string;
+}
+
+export const workspaceKeys = ["reviewSource", "board", "jira", "linear", "githubProjects", "github", "repoRoots", "defaultCwd"] as const satisfies readonly (keyof WorkspaceSettings)[];
+
+export interface Workspace extends WorkspaceSettings {
+  id: string;
+  name: string;
+}
+
+/** Id the pre-workspace profile migrated into. */
+export const legacyWorkspaceId = "default";
+
+/** The workspace a terminal or session belongs to, given the id it was
+ *  stamped with. Unstamped ones (from before workspaces existed) and ones
+ *  stamped with a workspace since removed belong to the migrated workspace,
+ *  or to the first one once that is gone too. */
+export function workspaceOf(stamp: string | null | undefined, workspaces: Pick<Workspace, "id">[]): string {
+  if (stamp && workspaces.some((w) => w.id === stamp)) return stamp;
+  return (workspaces.find((w) => w.id === legacyWorkspaceId) ?? workspaces[0]).id;
+}
+
+export interface DeckSettings extends WorkspaceSettings {
+  /** Every workspace, in the order the switcher lists them. Never empty. */
+  workspaces: Workspace[];
+  /** Id of the workspace the WorkspaceSettings fields above mirror. Writing
+   *  one of those fields writes that workspace. */
+  activeWorkspace: string;
+  /** Shortcut overrides by command; missing commands use the defaults. */
+  keybinds: Partial<Keybinds>;
+  defaultAgent: Agent;
+  /** Claude model alias or id used by deck's own orchestrator turns. */
+  askModel: string;
+  defaultView: DefaultView;
+  autoFix: AutoFixSettings;
   agentSharing: AgentSharingSettings;
   windowMode: WindowMode;
   /** Electron accelerator that summons/hides the window from anywhere. */
@@ -155,10 +192,6 @@ export interface DeckSettings {
   summonHideOnBlur: boolean;
   /** Keep Deck out of the Dock and Cmd-Tab; it lives in the tray and the hotkey. */
   hideFromDock: boolean;
-  /** Directories deck treats as repo roots (search fallbacks, repo pickers). */
-  repoRoots: string[];
-  /** Folder new terminals fall back to. Supports ~. */
-  defaultCwd: string;
   newTerminalCwd: NewTerminalCwdSettings;
   /** Built-in id, custom:<id>, or <plugin-id>:<theme-id>. */
   theme: string;
@@ -169,12 +202,7 @@ export interface DeckSettings {
   terminalAppearance: TerminalAppearanceSettings;
 }
 
-export const defaultSettings: DeckSettings = {
-  keybinds: {},
-  defaultAgent: "claude",
-  askModel: "sonnet",
-  defaultView: "terminal",
-  autoFix: { enabled: false, ci: true, conflicts: true, push: "review" },
+export const defaultWorkspaceSettings: WorkspaceSettings = {
   reviewSource: "github",
   board: {
     provider: "jira",
@@ -186,7 +214,20 @@ export const defaultSettings: DeckSettings = {
   jira: { baseUrl: "", email: "", apiToken: "", boardId: "" },
   linear: { apiKey: "", teamKey: "" },
   githubProjects: { owner: "", projectNumber: "" },
-  github: { owner: "" },
+  github: { owner: "", repos: [] },
+  repoRoots: [],
+  defaultCwd: "~",
+};
+
+export const defaultSettings: DeckSettings = {
+  ...defaultWorkspaceSettings,
+  workspaces: [{ id: "default", name: "Default", ...defaultWorkspaceSettings }],
+  activeWorkspace: "default",
+  keybinds: {},
+  defaultAgent: "claude",
+  askModel: "sonnet",
+  defaultView: "terminal",
+  autoFix: { enabled: false, ci: true, conflicts: true, push: "review" },
   agentSharing: { mode: "all", projects: [], transcripts: true, board: true, pullRequests: true },
   windowMode: "shared",
   summonHotkey: "Alt+Space",
@@ -195,8 +236,6 @@ export const defaultSettings: DeckSettings = {
   summonHeightRatio: 0.6,
   summonHideOnBlur: true,
   hideFromDock: false,
-  repoRoots: [],
-  defaultCwd: "~",
   newTerminalCwd: { tab: "current", split: "current" },
   theme: "dark",
   showTips: true,

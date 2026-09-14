@@ -54,6 +54,7 @@ const migrations: string[] = [
    ALTER TABLE indexed_files ADD COLUMN metadata TEXT;
    ALTER TABLE conv_messages ADD COLUMN source_key TEXT;
    CREATE UNIQUE INDEX idx_conv_source ON conv_messages(session_id, source_key);`,
+  `ALTER TABLE agent_sessions ADD COLUMN workspace TEXT`,
 ];
 
 export function openDb(): Database.Database {

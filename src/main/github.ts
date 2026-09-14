@@ -31,18 +31,24 @@ interface GhPrRow {
   repository?: { nameWithOwner?: string };
 }
 
+/** Search qualifiers narrowing GitHub to the workspace: its repositories
+ *  when any are listed, otherwise its owner; empty when neither is set. */
+export function githubScope(): string {
+  const { owner, repos } = getSettings().github;
+  if (repos.length) return repos.map((repo) => `repo:${repo.includes("/") ? repo : `${owner}/${repo}`}`).join(" ");
+  return owner ? `user:${owner}` : "";
+}
+
 export async function searchPrsForIssue(issueKey: string): Promise<IssuePr[]> {
-  const owner = getSettings().github.owner;
   const args = [
     "search",
     "prs",
-    issueKey,
+    `${issueKey} ${githubScope()}`.trim(),
     "--limit",
     "15",
     "--json",
     "number,title,state,isDraft,url,updatedAt,author,repository",
   ];
-  if (owner) args.push("--owner", owner);
   try {
     const { stdout } = await exec("gh", args, { timeout: 20_000 });
     return (JSON.parse(stdout) as GhPrRow[])
@@ -173,13 +179,30 @@ interface GhFileNode {
 
 /** GraphQL over the user's gh auth. Strings go raw (-f); numbers and booleans
  *  typed (-F), so a title that happens to read "123" stays a string. */
+/** What went wrong with a gh call, in one line the user can act on. gh echoes
+ *  the whole command and repeats a scope complaint once per field, none of
+ *  which belongs on a settings page. */
+function ghError(error: unknown): Error {
+  const { code, stderr = "", message = "" } = error as { code?: string; stderr?: string; message?: string };
+  if (code === "ENOENT") return new Error("The GitHub CLI (gh) is not installed.");
+  const scope = /requires one of the following scopes: \['([^']+)'/.exec(stderr)?.[1];
+  if (scope) return new Error(`Your gh login is missing the ${scope} scope. Run: gh auth refresh -s ${scope}`);
+  if (/not logged in|gh auth login/i.test(stderr)) return new Error("Not logged in to GitHub. Run: gh auth login");
+  const line = stderr.split("\n").find((l) => l.trim()) ?? message.split("\n")[0];
+  return new Error(line.replace(/^gh:\s*/, "").trim() || "GitHub request failed");
+}
+
 export async function graphql(query: string, variables: Record<string, string | number | boolean | null>) {
   const args = ["api", "graphql", "-f", `query=${query}`];
   for (const [key, value] of Object.entries(variables)) {
     if (value !== null) args.push(typeof value === "string" ? "-f" : "-F", `${key}=${value}`);
   }
-  const { stdout } = await exec("gh", args, { timeout: 20_000, maxBuffer: 8 * 1024 * 1024 });
-  return JSON.parse(stdout) as { data?: Record<string, unknown> };
+  try {
+    const { stdout } = await exec("gh", args, { timeout: 20_000, maxBuffer: 8 * 1024 * 1024 });
+    return JSON.parse(stdout) as { data?: Record<string, unknown> };
+  } catch (error) {
+    throw ghError(error);
+  }
 }
 
 // The REST `files` field lacks the viewed state, so files come from GraphQL.

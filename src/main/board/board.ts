@@ -9,9 +9,12 @@ import type { BoardCache, BoardColumnStatuses, BoardIssue, IssueHit, LinkedPullR
 
 export type { BoardCache, BoardColumn, BoardColumnStatuses, BoardIssue, IssueHit, LinkedPullRequest, NewIssue } from "./types.js";
 
-const CACHE_KEY = "board_cache";
-const LOCAL_MOVES_KEY = "board_local_moves";
+// Each workspace mirrors a board of its own, so its cache and local moves
+// are keyed by workspace.
+const cacheKey = () => `board_cache@${getSettings().activeWorkspace}`;
+const localMovesKey = () => `board_local_moves@${getSettings().activeWorkspace}`;
 const listeners = new Set<(b: BoardCache) => void>();
+const errorListeners = new Set<(message: string) => void>();
 let timer: NodeJS.Timeout | undefined;
 let syncing = false;
 
@@ -29,7 +32,7 @@ interface LocalMove {
 }
 
 function applyLocalMoves(raw: BoardCache): BoardCache {
-  const moves = kvGet<Record<string, LocalMove>>(LOCAL_MOVES_KEY) ?? {};
+  const moves = kvGet<Record<string, LocalMove>>(localMovesKey()) ?? {};
   const kept: Record<string, LocalMove> = {};
   const issues = raw.issues.map((issue) => {
     const move = moves[issue.key];
@@ -43,13 +46,13 @@ function applyLocalMoves(raw: BoardCache): BoardCache {
       localMove: true as const,
     };
   });
-  if (Object.keys(kept).length !== Object.keys(moves).length) kvSet(LOCAL_MOVES_KEY, kept);
+  if (Object.keys(kept).length !== Object.keys(moves).length) kvSet(localMovesKey(), kept);
   return { ...raw, issues };
 }
 
 /** Stores the tracker truth and hands listeners the board as deck shows it. */
 function publish(raw: BoardCache): BoardCache {
-  kvSet(CACHE_KEY, raw);
+  kvSet(cacheKey(), raw);
   const shown = applyLocalMoves(raw);
   for (const cb of listeners) cb(shown);
   return shown;
@@ -60,10 +63,16 @@ export function onBoardChanged(cb: (b: BoardCache) => void): () => void {
   return () => listeners.delete(cb);
 }
 
+/** A sync that failed, so the board can say why it is stale or empty. */
+export function onBoardSyncError(cb: (message: string) => void): () => void {
+  errorListeners.add(cb);
+  return () => errorListeners.delete(cb);
+}
+
 /** A cache synced by another provider is stale the moment the user switches;
  *  showing it would mix two trackers' columns. */
 export function getBoardCache(): BoardCache | undefined {
-  const raw = kvGet<BoardCache>(CACHE_KEY);
+  const raw = kvGet<BoardCache>(cacheKey());
   if (!raw || (raw.provider ?? "jira") !== boardProvider().kind) return undefined;
   return applyLocalMoves(raw);
 }
@@ -76,7 +85,7 @@ export async function moveIssue(key: string, columnName: string): Promise<BoardC
   const issue = cache?.issues.find((i) => i.key === key);
   if (!cache || !column || !issue) throw new Error(`Unknown issue ${key} or column ${columnName}`);
   const landed = await boardProvider().moveIssue(issue, column);
-  const raw = kvGet<BoardCache>(CACHE_KEY) ?? cache;
+  const raw = kvGet<BoardCache>(cacheKey()) ?? cache;
   return publish({
     ...raw,
     issues: raw.issues.map((i) => (i.key === key ? { ...i, ...landed } : i)),
@@ -93,16 +102,16 @@ export async function afterPrMerged(key: string): Promise<void> {
     await moveIssue(key, onMerge.column);
     return;
   }
-  const raw = kvGet<BoardCache>(CACHE_KEY);
+  const raw = kvGet<BoardCache>(cacheKey());
   const issue = raw?.issues.find((i) => i.key === key);
   const column = raw?.columns.find((c) => c.name === onMerge.column);
   if (!raw || !issue || !column) {
     throw new Error(`Unknown issue ${key} or column ${onMerge.column}`);
   }
   if (column.statusIds.includes(issue.statusId)) return;
-  const moves = kvGet<Record<string, LocalMove>>(LOCAL_MOVES_KEY) ?? {};
+  const moves = kvGet<Record<string, LocalMove>>(localMovesKey()) ?? {};
   moves[key] = { fromStatusId: issue.statusId, column: column.name };
-  kvSet(LOCAL_MOVES_KEY, moves);
+  kvSet(localMovesKey(), moves);
   publish(raw);
 }
 
@@ -113,6 +122,9 @@ export async function syncBoard(): Promise<BoardCache | undefined> {
   try {
     const board = await provider.fetchBoard();
     return publish({ ...board, provider: provider.kind, at: Date.now() });
+  } catch (error) {
+    for (const cb of errorListeners) cb(error instanceof Error ? error.message : String(error));
+    throw error;
   } finally {
     syncing = false;
   }
