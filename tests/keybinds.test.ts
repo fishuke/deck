@@ -34,6 +34,10 @@ describe("keybinds", () => {
     expect(matchKeybind(keybinds, press({ key: "1", code: "Digit1", metaKey: true }))).toBeUndefined();
   });
 
+  it("turns arrow chords into electron accelerators", () => {
+    expect(acceleratorOf(defaultKeybinds["workspace.next"])).toBe("CommandOrControl+Alt+Right");
+    expect(formatChord(defaultKeybinds["workspace.prev"])).toBe("⌘⌥←");
+  });
   it("turns chords into electron accelerators", () => {
     expect(acceleratorOf("Meta+,")).toBe("CommandOrControl+,");
     expect(acceleratorOf("Meta+Alt+Digit2")).toBe("CommandOrControl+Alt+2");

@@ -70,7 +70,7 @@ The queue is fed either by GitHub's review requests or by a column of your board
 
 ### Workspaces
 
-One per client or company. Each workspace has its own tracker connection, GitHub owner, reviews-queue source and folders, and its own terminal tabs and agent sessions (right-click a tab to rename it or move it to another workspace); the board, the review queue, the PR inbox and the sidebar follow whichever is active. Switch from the titlebar, ⌘K (`Workspace: …`) or **Settings → Workspaces**. Everything about Deck itself (theme, hotkey, agents, auto-fix) is shared and lives in **Settings → General**.
+One per client or company. Each workspace has its own tracker connection, GitHub owner, reviews-queue source and folders, and its own terminal tabs and agent sessions (right-click a tab to rename it or move it to another workspace); the board, the review queue, the PR inbox and the sidebar follow whichever is active. Switch from the titlebar, <kbd>⌘⌥→</kbd> / <kbd>⌘⌥←</kbd>, ⌘K (`Workspace: …`) or **Settings → Workspaces**. Everything about Deck itself (theme, hotkey, agents, auto-fix) is shared and lives in **Settings → General**.
 
 ### Auto-fix
 

@@ -143,7 +143,13 @@ function Shell() {
     else if (command === "view.reviews") setView("reviews");
     else if (command === "zen") setMode(mode === "zen" ? "normal" : "zen");
     else if (command === "presentation") setMode(mode === "presentation" ? "normal" : "presentation");
-    else if (command === "tab.new" || command === "tab.newAgent") {
+    else if (command === "workspace.next" || command === "workspace.prev") {
+      const workspaces = settings?.workspaces ?? [];
+      const index = workspaces.findIndex((workspace) => workspace.id === settings?.activeWorkspace);
+      const next = workspaces[(index + (command === "workspace.next" ? 1 : -1) + workspaces.length) % workspaces.length];
+      // One workspace: still handled, so the chord never reaches the shell.
+      if (next && next.id !== settings?.activeWorkspace) void window.deck.updateSettings({ activeWorkspace: next.id });
+    } else if (command === "tab.new" || command === "tab.newAgent") {
       setView("terminal");
       void newTab(command === "tab.newAgent" ? { agent: settings?.defaultAgent } : undefined);
     } else if (command === "tab.close" && view === "terminal" && activeId) {

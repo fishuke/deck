@@ -6,6 +6,7 @@ export type KeybindCommand =
   | "search" | "settings" | "sidebar" | "window.new"
   | "view.terminal" | "view.board" | "view.agent" | "view.reviews"
   | "zen" | "presentation"
+  | "workspace.next" | "workspace.prev"
   | "tab.new" | "tab.newAgent" | "tab.close" | "tab.reopen" | "tab.next" | "tab.prev"
   | "split.right" | "split.down" | "find" | "composer" | "changes"
   | "font.increase" | "font.decrease" | "font.reset";
@@ -30,6 +31,8 @@ export const keybindInfos: KeybindInfo[] = [
   { id: "view.reviews", label: "Reviews page", group: "Workbench", default: "Meta+Alt+Digit4" },
   { id: "zen", label: "Toggle Zen view", group: "Workbench", default: "Meta+Shift+Enter" },
   { id: "presentation", label: "Toggle Presentation view", group: "Workbench", default: "Meta+Shift+P" },
+  { id: "workspace.next", label: "Next workspace", group: "Workbench", default: "Meta+Alt+ArrowRight" },
+  { id: "workspace.prev", label: "Previous workspace", group: "Workbench", default: "Meta+Alt+ArrowLeft" },
   { id: "tab.new", label: "New terminal tab", group: "Terminal", default: "Meta+T" },
   { id: "tab.newAgent", label: "New tab running the default agent", group: "Terminal", default: "Meta+Shift+N" },
   { id: "tab.close", label: "Close the active tab", group: "Terminal", default: "Meta+W" },
@@ -72,7 +75,7 @@ export function matchKeybind(keybinds: Keybinds, event: KeyPress): KeybindComman
 
 const symbols: Record<string, string> = { Meta: "⌘", Ctrl: "⌃", Alt: "⌥", Shift: "⇧", Enter: "⏎", Escape: "esc", Backspace: "⌫", Tab: "⇥", Space: "space", ArrowUp: "↑", ArrowDown: "↓", ArrowLeft: "←", ArrowRight: "→" };
 
-const acceleratorParts: Record<string, string> = { Meta: "CommandOrControl", Ctrl: "Control", Enter: "Return", Escape: "Esc" };
+const acceleratorParts: Record<string, string> = { Meta: "CommandOrControl", Ctrl: "Control", Enter: "Return", Escape: "Esc", ArrowUp: "Up", ArrowDown: "Down", ArrowLeft: "Left", ArrowRight: "Right" };
 
 /** "Meta+Alt+Digit1" as the electron accelerator "CommandOrControl+Alt+1". */
 export function acceleratorOf(chord: string): string | undefined {
