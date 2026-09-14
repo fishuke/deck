@@ -3,7 +3,6 @@ import { agentLabels, type Agent } from "../../../shared/agents.js";
 import type { AgentSession } from "../../../main/sessions.js";
 import { SessionIcon, statusLabels, statusTones } from "./SessionIcon.js";
 import { SessionArchive } from "./SessionArchive.js";
-import { previewRows } from "./devPreviewRows.js";
 import { WorktreeSweep } from "./WorktreeSweep.js";
 import { useAgentSessions } from "../lib/useSessions.js";
 import { shortPath, useGitSummary } from "../lib/useGitSummary.js";
@@ -165,10 +164,6 @@ export function Sidebar({ view, onView }: { view: View; onView: (view: View) => 
     </div>
     <div className="min-h-0 flex-1 overflow-y-auto">
       {visibleTabs.map((tab) => <SessionRow key={tab.termId} tab={tab} session={byTerm.get(tab.termId)} index={tabs.indexOf(tab)} onOpen={() => { focusTab(tab.termId); onView("terminal"); }} />)}
-      {import.meta.env.DEV && <>
-        <div className="px-4 pb-1 pt-3 text-[10px] tracking-widest text-dim">PREVIEW · DEV ONLY</div>
-        {previewRows.map(({ tab, session }) => <SessionRow key={tab.termId} tab={tab} session={session} index={-1} onOpen={() => {}} />)}
-      </>}
       {!searching && lastSession && <section aria-label="Session suggestions" className="mx-3 my-3 rounded-lg border border-edge2 bg-card/50 p-3">
         <div className="flex items-center gap-2">
           <span className="min-w-0 flex-1 text-[11px] font-medium text-mut">Continue your last session</span>
