@@ -27,8 +27,9 @@ export function issueFor(pr: InboxPr, board: BoardCache | undefined): BoardIssue
 
 /** Non-draft review requests, oldest first so nothing sits unreviewed while
  *  new ones jump the queue. With review columns configured, only PRs whose
- *  card sits in one of those columns make it in. */
-export function reviewQueue(requested: InboxPr[], board: BoardCache | undefined, reviewColumns: string[], done = new Set<string>()): InboxPr[] {
+ *  card sits in one of those columns make it in. A PR stays until it is
+ *  merged or closed: reviewing it is not always the end of the user's part. */
+export function reviewQueue(requested: InboxPr[], board: BoardCache | undefined, reviewColumns: string[]): InboxPr[] {
   const statusIds = new Set(board?.columns.filter((c) => reviewColumns.includes(c.name)).flatMap((c) => c.statusIds));
   const inReview = (pr: InboxPr) => {
     if (reviewColumns.length === 0) return true;
@@ -36,12 +37,12 @@ export function reviewQueue(requested: InboxPr[], board: BoardCache | undefined,
     return Boolean(issue && statusIds.has(issue.statusId));
   };
   return requested
-    .filter((pr) => !pr.isDraft && !done.has(`${pr.repo}#${pr.number}`) && inReview(pr))
+    .filter((pr) => !pr.isDraft && inReview(pr))
     .sort((a, b) => a.updatedAt.localeCompare(b.updatedAt));
 }
 
 /** Live review queue plus the board it was built from. */
-export function useReviewQueue(done = new Set<string>()) {
+export function useReviewQueue() {
   const inbox = usePrInbox();
   const [board, setBoard] = useState<BoardCache>();
   const boardSettings = useSettings()?.board;
@@ -59,7 +60,7 @@ export function useReviewQueue(done = new Set<string>()) {
       ...reviewed.filter((pr) => !pr.newSinceReview),
     ];
   }, [inbox]);
-  const queue = useMemo(() => reviewQueue(waiting, board, boardSettings?.reviewColumns ?? [], done), [waiting, board, boardSettings, done]);
+  const queue = useMemo(() => reviewQueue(waiting, board, boardSettings?.reviewColumns ?? []), [waiting, board, boardSettings]);
   const reviewed = useMemo(() => new Map((inbox?.reviewed ?? []).map((pr) => [prKey(pr), Boolean(pr.newSinceReview)])), [inbox]);
   // Every open PR the reviews page can show, queued or not.
   const lists = useMemo(() => ({

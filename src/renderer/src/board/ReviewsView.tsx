@@ -55,8 +55,7 @@ function PrList({ title, prs, current, badge, onPick }: {
 }
 
 export function ReviewsView({ visible }: { visible: boolean }) {
-  const [done, setDone] = useState(new Set<string>());
-  const { queue, board, loaded, reviewed: reviewedPrs, lists } = useReviewQueue(done);
+  const { queue, board, loaded, reviewed: reviewedPrs, lists } = useReviewQueue();
   const [index, setIndex] = useState(0);
   const [picked, setPicked] = useState<string>();
   const [rail, setRail] = useState(() => localStorage.getItem("deck.reviews.rail") !== "hidden");
@@ -93,11 +92,15 @@ export function ReviewsView({ visible }: { visible: boolean }) {
 
   const onReviewed = (event: ReviewEvent) => {
     if (!current || event === "COMMENT") return;
-    const key = `${current.repo}#${current.number}`;
+    const key = prKey(current);
     setReviewed({ key, event });
-    // Leave the confirmation visible for a beat, then the queue closes over it.
+    // Pick up the review so the PR reads as reviewed rather than waiting.
+    void window.deck.inbox.refresh();
+    // Leave the confirmation visible for a beat, then move on. The PR keeps
+    // its place in the queue until it is merged, since an approval is not
+    // always the last the user has to do with it.
     setTimeout(() => {
-      setDone((d) => new Set(d).add(key));
+      go(1);
       setReviewed((r) => (r?.key === key ? undefined : r));
     }, 900);
   };
@@ -118,8 +121,8 @@ export function ReviewsView({ visible }: { visible: boolean }) {
       <div className="flex items-center gap-3 border-b border-edge px-6 py-3 font-sans text-[12px]">
         <span className="font-bold text-ink">Reviews</span>
         <span className="text-[11px] text-dim">{queue.length === 0 ? "nothing waiting on you" : `${position + 1} of ${queue.length}`}</span>
-        {current && reviewedPrs.has(`${current.repo}#${current.number}`) && (
-          reviewedPrs.get(`${current.repo}#${current.number}`)
+        {current && reviewedPrs.has(prKey(current)) && (
+          reviewedPrs.get(prKey(current))
             ? <span title="You reviewed this and the author has pushed since" className="rounded border border-orange/40 px-1.5 py-0.5 text-[10px] text-orange">new since your review</span>
             : <span title="You reviewed this; nothing new since" className="rounded border border-edge3 px-1.5 py-0.5 text-[10px] text-dim">reviewed</span>
         )}

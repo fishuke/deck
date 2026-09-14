@@ -32,8 +32,9 @@ describe("reviewQueue", () => {
     expect(reviewQueue(requested, undefined, ["Review"])).toEqual([]);
   });
 
-  it("closes over reviewed PRs", () => {
-    expect(reviewQueue(requested, board, [], new Set(["acme/api#2"])).map((p) => p.number)).toEqual([1, 3]);
+  it("keeps a PR the user has already reviewed, since it is not merged yet", () => {
+    const approved = pr(2, "INI-2 other thing", { reviewDecision: "APPROVED" });
+    expect(reviewQueue([approved], board, []).map((p) => p.number)).toEqual([2]);
   });
 });
 
