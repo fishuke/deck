@@ -8,6 +8,8 @@ import { useTabs } from "../store.js";
 import { AgentChat } from "./AgentChat.js";
 import { useChat } from "./ChatStore.js";
 import { isWaiting, project, useAttentionCount } from "./attention.js";
+import { partOfDay, waitingCount, waitingParts, yourPrs } from "./greeting.js";
+import { useReviewQueue } from "../lib/reviews.js";
 
 // The agent page: deck's orchestrator front and centre (like Linear's Agent
 // view), with a rail of waiting sessions and every live session.
@@ -35,7 +37,7 @@ function Section({ title, count, children }: { title: string; count: number; chi
 export function AgentPage({ visible }: { visible: boolean }) {
   const { newTab, tabs, focusTab } = useTabs();
   const sessions = useAgentSessions();
-  const { turns, reset, setReplyTo } = useChat();
+  const { turns, reset, setReplyTo, ask } = useChat();
   const [rail, setRail] = useState(() => localStorage.getItem("deck.agent.rail") !== "hidden");
 
   const toggleRail = () => setRail((open) => { localStorage.setItem("deck.agent.rail", open ? "hidden" : "visible"); return !open; });
@@ -54,6 +56,26 @@ export function AgentPage({ visible }: { visible: boolean }) {
   const open = new Set(tabs.map((t) => t.termId));
   const openSession = (s: AgentSession) => s.term_id && open.has(s.term_id) ? focusTab(s.term_id) : void newTab({ cwd: s.cwd, agent: s.agent, sessionId: s.session_id });
 
+  const { queue, lists } = useReviewQueue();
+  const counts = { agents: attention, prs: yourPrs(lists.mine).length, reviews: queue.length };
+  const parts = waitingParts(counts);
+  const headline = (
+    <div className="flex flex-col gap-1">
+      <span className="text-[20px] text-ink">Good {partOfDay()}.</span>
+      <span className="text-[13px] text-dim">
+        {waitingCount(counts) === 0 ? "Nothing needs you. Ask deck anything." : <>
+          Needs you:{" "}
+          {parts.map((part, i) => (
+            <span key={part.text}>
+              {i > 0 && (i === parts.length - 1 ? " and " : ", ")}
+              <button onClick={() => void ask(part.prompt)} className="text-accent hover:underline">{part.text}</button>
+            </span>
+          ))}.
+        </>}
+      </span>
+    </div>
+  );
+
   return (
     <div className={`${visible ? "flex" : "hidden"} min-h-0 min-w-0 flex-1`}>
       <div className="flex min-h-0 min-w-0 flex-1 flex-col">
@@ -69,7 +91,7 @@ export function AgentPage({ visible }: { visible: boolean }) {
           </span>
           <button onClick={toggleRail} aria-pressed={rail} aria-label="Toggle agent rail" title="Sessions and pull requests" className={`rounded p-1 ${rail ? "bg-card2 text-soft" : "text-dim hover:text-ink"}`}><Icon name="sidebar" size={14} /></button>
         </div>
-        <AgentChat sessions={live} />
+        <AgentChat sessions={live} headline={headline} />
       </div>
 
       {rail && (

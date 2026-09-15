@@ -152,6 +152,8 @@ app.whenReady().then(async () => {
   if (!(await rail()).includes('NEEDS YOU') || !(await rail()).includes('Review authentication changes')) throw Error('Agent rail did not list the session waiting on me');
   if (!(await rail()).includes('SESSIONS') || !(await rail()).includes('Build a better terminal')) throw Error('Agent rail did not list the running sessions');
   if (!(await run(`document.querySelector('aside').innerText`)).includes('2')) throw Error('Sidebar agent badge missing');
+  const canvas = await run('document.body.innerText');
+  if (!/Good (morning|afternoon|evening)\./.test(canvas) || !canvas.includes('Needs you:')) throw Error('The agent page did not lead with what is waiting');
   await screenshot('agent');
   await click('My PRs needing attention');
   if (!(await run(`[...document.querySelectorAll('.md')].some(element => element.innerText.includes('Ready'))`))) throw Error('Agent page did not render its completed answer');
@@ -198,7 +200,7 @@ app.whenReady().then(async () => {
   await click('Exit presentation view');
   if ((await run('window.deck.fullscreenCalls().at(-1)')) !== false) throw Error('Leaving the mode did not restore the window');
   if (errors.length) throw Error(errors.join('\n'));
-  console.log('UI smoke passed: focus, splits, files, Zen, Presentation, font sizing, session navigation, Escape, sidebar, Codex launch, themes, custom preview/save, plugin worker panel, plugin themes, disable/enable agent command, Codex history preview and resume, recent suggestions, expiry, dismissal, search and close all, agent page rail, answer, tool trace and reset, agent dock sharing the conversation, review queue navigation and approve-then-next, Zen and Presentation on the reviews page.');
+  console.log('UI smoke passed: focus, splits, files, Zen, Presentation, font sizing, session navigation, Escape, sidebar, Codex launch, themes, custom preview/save, plugin worker panel, plugin themes, disable/enable agent command, Codex history preview and resume, recent suggestions, expiry, dismissal, search and close all, agent page greeting and rail, answer, tool trace and reset, agent dock sharing the conversation, review queue navigation and approve-then-next, Zen and Presentation on the reviews page.');
   window.destroy();
   app.quit();
 }).catch((error) => { console.error(error); app.exit(1); });

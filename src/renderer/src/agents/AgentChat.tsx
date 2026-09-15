@@ -22,7 +22,7 @@ const EXAMPLES: { title: string; hint: string; prompt: string }[] = [
 const label = (s: AgentSession): string => s.title ?? project(s.cwd);
 
 /** `compact` fits the chat into the dock popover instead of the full page. */
-export function AgentChat({ sessions, compact = false }: { sessions: AgentSession[]; compact?: boolean }) {
+export function AgentChat({ sessions, compact = false, headline }: { sessions: AgentSession[]; compact?: boolean; headline?: React.ReactNode }) {
   const { turns, busy, agent, chooseAgent, model, setModel, ask, note, replyTo, setReplyTo } = useChat();
   const [draft, setDraft] = useState("");
   const scroller = useRef<HTMLDivElement>(null);
@@ -93,8 +93,9 @@ export function AgentChat({ sessions, compact = false }: { sessions: AgentSessio
     return (
       <div className={`flex min-h-0 flex-1 flex-col items-center justify-center overflow-y-auto ${gutter} ${compact ? "py-4" : "py-10"}`}>
         <div className="w-full max-w-[760px]">
+          {!compact && headline && <div className="mb-6">{headline}</div>}
           {composer}
-          <div className="mt-6 text-[12px] text-dim">Get started with some examples</div>
+          <div className="mt-5 text-[11px] text-mut">Get started with some examples</div>
           {compact ? (
             <div className="mt-2 flex flex-col">
               {EXAMPLES.map((e) => (
@@ -104,12 +105,11 @@ export function AgentChat({ sessions, compact = false }: { sessions: AgentSessio
               ))}
             </div>
           ) : (
-            <div className="mt-3 grid grid-cols-2 gap-3 lg:grid-cols-3">
+            <div className="mt-2 flex flex-wrap gap-2">
               {EXAMPLES.map((e) => (
-                <button key={e.title} aria-label={e.title} onClick={() => send(e.prompt)} className="flex min-h-[120px] flex-col rounded-xl border border-edge2 bg-card px-4 py-4 text-left hover:border-edge3">
-                  <Icon name="sparkle" size={14} className="text-accent" />
-                  <span className="mt-auto block text-[13px] text-ink">{e.title}</span>
-                  <span className="mt-1 block text-[11px] leading-relaxed text-dim">{e.hint}</span>
+                <button key={e.title} aria-label={e.title} title={e.hint} onClick={() => send(e.prompt)}
+                  className="flex items-center gap-1.5 rounded-full border border-edge2 px-3 py-1.5 text-[12px] text-body hover:border-edge3 hover:text-ink">
+                  <Icon name="sparkle" size={10} className="text-accent" />{e.title}
                 </button>
               ))}
             </div>
