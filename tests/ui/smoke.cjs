@@ -126,10 +126,13 @@ app.whenReady().then(async () => {
   await click('Review workspace with Codex');
   if (!(await run(`document.body.innerText.includes('Codex')`))) throw Error('Plugin Codex launch failed');
   await click('Settings');
-  await click('General & integrations');
+  await click('General');
   await wait(200);
-  if (!(await run(`document.body.innerText.includes('Rejected status')`))) throw Error('General settings did not render');
+  if (!(await run(`document.body.innerText.includes('Auto-fix my pull requests')`))) throw Error('General settings did not render');
   await screenshot('general-settings');
+  await click('Workspaces');
+  await wait(200);
+  if (!(await run(`document.body.innerText.includes('Rejected status')`))) throw Error('Workspace settings did not render');
   await click('Appearance');
   await click('Use Carbon theme');
   await click('terminal');
@@ -149,6 +152,8 @@ app.whenReady().then(async () => {
   if (!(await rail()).includes('NEEDS YOU') || !(await rail()).includes('Review authentication changes')) throw Error('Agent rail did not list the session waiting on me');
   if (!(await rail()).includes('SESSIONS') || !(await rail()).includes('Build a better terminal')) throw Error('Agent rail did not list the running sessions');
   if (!(await run(`document.querySelector('aside').innerText`)).includes('2')) throw Error('Sidebar agent badge missing');
+  const canvas = await run('document.body.innerText');
+  if (!/Good (morning|afternoon|evening)\./.test(canvas) || !canvas.includes('Needs you:')) throw Error('The agent page did not lead with what is waiting');
   await screenshot('agent');
   await click('My PRs needing attention');
   if (!(await run(`[...document.querySelectorAll('.md')].some(element => element.innerText.includes('Ready'))`))) throw Error('Agent page did not render its completed answer');
@@ -178,7 +183,7 @@ app.whenReady().then(async () => {
   await click('Approve');
   await wait(1200);
   if (JSON.stringify(await run('window.deck.reviewedEvents()')) !== '["APPROVE"]') throw Error('Approve did not submit a review');
-  if (!(await header()).includes('1 of 1') || !(await header()).includes('APP-42 Fix login expiry')) throw Error('Approving did not move to the next review');
+  if (!(await header()).includes('2 of 2') || !(await header()).includes('APP-42 Fix login expiry')) throw Error('Approving did not move to the next review');
   await run(`window.dispatchEvent(new KeyboardEvent('keydown', {key:'Enter',metaKey:true,shiftKey:true,bubbles:true,cancelable:true}))`);
   await wait(200);
   if (!(await run(`document.querySelector('[data-display-mode="zen"]') && document.querySelector('aside').offsetWidth === 0 && document.body.innerText.includes('APP-42 Fix login expiry') && document.body.innerText.includes('Reviews')`))) throw Error('Zen did not keep the reviews page while hiding chrome');
@@ -195,7 +200,7 @@ app.whenReady().then(async () => {
   await click('Exit presentation view');
   if ((await run('window.deck.fullscreenCalls().at(-1)')) !== false) throw Error('Leaving the mode did not restore the window');
   if (errors.length) throw Error(errors.join('\n'));
-  console.log('UI smoke passed: focus, splits, files, Zen, Presentation, font sizing, session navigation, Escape, sidebar, Codex launch, themes, custom preview/save, plugin worker panel, plugin themes, disable/enable agent command, Codex history preview and resume, recent suggestions, expiry, dismissal, search and close all, agent page rail, answer, tool trace and reset, agent dock sharing the conversation, review queue navigation and approve-then-next, Zen and Presentation on the reviews page.');
+  console.log('UI smoke passed: focus, splits, files, Zen, Presentation, font sizing, session navigation, Escape, sidebar, Codex launch, themes, custom preview/save, plugin worker panel, plugin themes, disable/enable agent command, Codex history preview and resume, recent suggestions, expiry, dismissal, search and close all, agent page greeting and rail, answer, tool trace and reset, agent dock sharing the conversation, review queue navigation and approve-then-next, Zen and Presentation on the reviews page.');
   window.destroy();
   app.quit();
 }).catch((error) => { console.error(error); app.exit(1); });
