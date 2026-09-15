@@ -146,7 +146,8 @@ app.whenReady().then(async () => {
   await require('./sidebar.cjs')({ window, run, click, wait, screenshot });
   await click('agent');
   const rail = () => run(`document.querySelector('section[aria-label="Agent rail"]').innerText`);
-  if (!(await rail()).includes('Retry uploads on timeout') || !(await rail()).includes('CI failing') || !(await rail()).includes('Migrate sessions table')) throw Error('Agent rail did not list PRs needing attention and review requests');
+  if (!(await rail()).includes('NEEDS YOU') || !(await rail()).includes('Review authentication changes')) throw Error('Agent rail did not list the session waiting on me');
+  if (!(await rail()).includes('SESSIONS') || !(await rail()).includes('Build a better terminal')) throw Error('Agent rail did not list the running sessions');
   if (!(await run(`document.querySelector('aside').innerText`)).includes('2')) throw Error('Sidebar agent badge missing');
   await screenshot('agent');
   await click('My PRs needing attention');
