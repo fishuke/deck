@@ -126,10 +126,13 @@ app.whenReady().then(async () => {
   await click('Review workspace with Codex');
   if (!(await run(`document.body.innerText.includes('Codex')`))) throw Error('Plugin Codex launch failed');
   await click('Settings');
-  await click('General & integrations');
+  await click('General');
   await wait(200);
-  if (!(await run(`document.body.innerText.includes('Rejected status')`))) throw Error('General settings did not render');
+  if (!(await run(`document.body.innerText.includes('Auto-fix my pull requests')`))) throw Error('General settings did not render');
   await screenshot('general-settings');
+  await click('Workspaces');
+  await wait(200);
+  if (!(await run(`document.body.innerText.includes('Rejected status')`))) throw Error('Workspace settings did not render');
   await click('Appearance');
   await click('Use Carbon theme');
   await click('terminal');
@@ -178,7 +181,7 @@ app.whenReady().then(async () => {
   await click('Approve');
   await wait(1200);
   if (JSON.stringify(await run('window.deck.reviewedEvents()')) !== '["APPROVE"]') throw Error('Approve did not submit a review');
-  if (!(await header()).includes('1 of 1') || !(await header()).includes('APP-42 Fix login expiry')) throw Error('Approving did not move to the next review');
+  if (!(await header()).includes('2 of 2') || !(await header()).includes('APP-42 Fix login expiry')) throw Error('Approving did not move to the next review');
   await run(`window.dispatchEvent(new KeyboardEvent('keydown', {key:'Enter',metaKey:true,shiftKey:true,bubbles:true,cancelable:true}))`);
   await wait(200);
   if (!(await run(`document.querySelector('[data-display-mode="zen"]') && document.querySelector('aside').offsetWidth === 0 && document.body.innerText.includes('APP-42 Fix login expiry') && document.body.innerText.includes('Reviews')`))) throw Error('Zen did not keep the reviews page while hiding chrome');
