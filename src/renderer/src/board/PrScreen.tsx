@@ -309,6 +309,11 @@ export function PrScreen({ pr, issue, onClose, embedded = false, hidden = false,
             {detail.reviewDecision.toLowerCase().replace("_", " ")}
           </span>
         )}
+        {detail?.mergeable === "CONFLICTING" && (
+          <span className="rounded bg-red/15 px-1.5 text-[10px] text-red" title={`Conflicts with ${detail.baseRefName}`}>
+            merge conflicts
+          </span>
+        )}
         <span className="relative ml-auto flex items-center gap-3 text-[11px] text-dim">
           <button
             onClick={() => setMenuOpen((o) => !o)}

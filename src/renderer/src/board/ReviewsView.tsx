@@ -45,6 +45,7 @@ function PrList({ title, prs, current, badge, onPick }: {
             </span>
             <span className="flex items-center gap-1.5 truncate text-[10px] text-dim">
               {pr.repo.split("/")[1] ?? pr.repo}{pr.author && ` · ${pr.author}`}
+              {pr.mergeable === "CONFLICTING" && <span className="text-red">· merge conflicts</span>}
               {note && <span className="text-orange">· {note}</span>}
             </span>
           </button>
