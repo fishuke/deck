@@ -68,6 +68,31 @@ export async function searchPrsForIssue(issueKey: string): Promise<IssuePr[]> {
   }
 }
 
+/** One pull request as the search rows above describe it, or null when gh
+ *  cannot see it (deleted, private to another account, offline). */
+export async function prSummary(repo: string, number: number): Promise<IssuePr | null> {
+  try {
+    const { stdout } = await exec(
+      "gh",
+      ["pr", "view", String(number), "-R", repo, "--json", "number,title,state,isDraft,url,updatedAt,author"],
+      { timeout: 20_000 },
+    );
+    const row = JSON.parse(stdout) as GhPrRow;
+    return {
+      repo,
+      number: row.number,
+      title: row.title,
+      state: row.state,
+      isDraft: row.isDraft,
+      url: row.url,
+      author: row.author?.login ?? "",
+      updatedAt: row.updatedAt,
+    };
+  } catch {
+    return null;
+  }
+}
+
 export type MergeMethod = "merge" | "squash" | "rebase";
 
 export interface PrCheck {

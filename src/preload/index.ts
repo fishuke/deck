@@ -160,6 +160,8 @@ const api = {
   sessions: {
     list: (): Promise<AgentSession[]> => ipcRenderer.invoke("sessions:list"),
     remove: (id: string): Promise<void> => ipcRenderer.invoke("sessions:remove", id),
+    /** Pull requests the session opened, with their state on GitHub; `fresh` asks GitHub again. */
+    pullRequests: (id: string, fresh = false): Promise<IssuePr[]> => ipcRenderer.invoke("sessions:pullRequests", id, fresh),
     onChanged: (cb: (sessions: AgentSession[]) => void): (() => void) => {
       const listener = (_e: unknown, sessions: AgentSession[]) => cb(sessions);
       ipcRenderer.on("sessions:changed", listener);

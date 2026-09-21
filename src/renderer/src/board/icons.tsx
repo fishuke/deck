@@ -41,6 +41,7 @@ const paths = {
   dots: "M3.5 8h.01M8 8h.01M12.5 8h.01",
   sparkle: "M8 2v12M2 8h12M4 4l8 8M12 4l-8 8",
   issue: "M8 2l3 3-3 3-3-3zM5 8l3 3-3 3-3-3zM11 8l3 3-3 3-3-3z",
+  broom: "M13.5 2.5L8 8M8 8l2.5 2.5-2 3.5L3 12.5l1.5-3z M5.5 13.5l1.5-3",
 } as const;
 
 const filled = new Set<IconName>(["play", "dot"]);

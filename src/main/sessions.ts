@@ -120,6 +120,10 @@ export function removeSession(id: string): void {
   notify();
 }
 
+export function getSession(id: string): AgentSession | undefined {
+  return openDb().prepare("SELECT * FROM agent_sessions WHERE session_id = ?").get(id) as AgentSession | undefined;
+}
+
 export function listSessions(limit = 100): AgentSession[] {
   return openDb()
     .prepare("SELECT * FROM agent_sessions ORDER BY updated_at DESC LIMIT ?")

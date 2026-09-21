@@ -84,6 +84,15 @@ export async function indexFile(filePath: string, agent: Agent): Promise<void> {
   })();
 }
 
+/** Where a session's transcript was indexed from, for sessions whose hooks
+ *  never said (Codex, and sessions deck saw only through the index). */
+export function transcriptPath(agent: Agent, sessionId: string): string | undefined {
+  const row = openDb()
+    .prepare("SELECT path FROM indexed_files WHERE json_extract(metadata, '$.agent') = ? AND json_extract(metadata, '$.sessionId') = ? ORDER BY mtime DESC LIMIT 1")
+    .get(agent, sessionId) as { path: string } | undefined;
+  return row?.path;
+}
+
 function transcriptAgent(file: string): Agent | undefined {
   if (!file.endsWith(".jsonl")) return;
   const relative = path.relative(PROJECTS_DIR, file);

@@ -27,6 +27,18 @@ describe("review source migration", () => {
   });
 });
 
+describe("experiments", () => {
+  it("adds the flags a profile was saved without, off", () => {
+    state.stored = { theme: "light" };
+    expect(getSettings().experiments).toEqual({ sessionSweep: false });
+  });
+
+  it("keeps a flag the user switched on", () => {
+    state.stored = { experiments: { sessionSweep: true } };
+    expect(getSettings().experiments.sessionSweep).toBe(true);
+  });
+});
+
 describe("workspaces", () => {
   it("turns a profile saved before workspaces into one, named after its owner", () => {
     state.stored = { github: { owner: "acme" }, linear: { apiKey: "k", teamKey: "ENG" }, theme: "light" };
