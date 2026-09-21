@@ -81,6 +81,7 @@ export function getSettings(): DeckSettings {
     autoFix: { ...defaultSettings.autoFix, ...stored.autoFix },
     newTerminalCwd: { ...defaultSettings.newTerminalCwd, ...stored.newTerminalCwd },
     terminalAppearance: { ...defaultSettings.terminalAppearance, ...stored.terminalAppearance },
+    experiments: { ...defaultSettings.experiments, ...stored.experiments },
     ...workspaceFields(active),
     workspaces,
     activeWorkspace: active.id,

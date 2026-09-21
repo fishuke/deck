@@ -4,6 +4,7 @@ import type { AgentSession } from "../../../main/sessions.js";
 import { SessionIcon, statusLabels, statusTones } from "./SessionIcon.js";
 import { SessionArchive } from "./SessionArchive.js";
 import { WorktreeSweep } from "./WorktreeSweep.js";
+import { SessionSweep } from "./SessionSweep.js";
 import { useAgentSessions } from "../lib/useSessions.js";
 import { shortPath, useGitSummary } from "../lib/useGitSummary.js";
 import { useTabs, type TermTab } from "../store.js";
@@ -81,6 +82,8 @@ export function Sidebar({ view, onView }: { view: View; onView: (view: View) => 
   const { tabs, newTab, focusTab, closeTab } = useTabs();
   const [archive, setArchive] = useState(false);
   const [worktreesOpen, setWorktreesOpen] = useState(false);
+  const [sweepOpen, setSweepOpen] = useState(false);
+  const settings = useSettings();
   // Arc-style: a horizontal swipe on the sidebar steps to the next/previous view.
   // A swipe keeps firing momentum events long after the fingers lift, so once a step is
   // taken the sidebar goes deaf for a moment: one view per swipe, never a jump.
@@ -127,6 +130,10 @@ export function Sidebar({ view, onView }: { view: View; onView: (view: View) => 
     return () => window.removeEventListener("mousedown", dismiss);
   }, [menu]);
   const byTerm = new Map(sessions.filter((session) => session.term_id && session.status !== "ended").reverse().map((session) => [session.term_id, session]));
+  const liveAgentTabs = tabs.flatMap((tab) => {
+    const session = byTerm.get(tab.termId);
+    return session && !session.session_id.startsWith("pending:") ? [{ tab, session }] : [];
+  });
   const openIds = new Set(tabs.map((tab) => tab.termId));
   const openSessions = new Set(tabs.map((tab) => tab.sessionId));
   const matches = (text: string, status?: string) => text.toLowerCase().includes(query.trim().toLowerCase()) && (filter === "all" || status === "needs_input" || status === "needs_review");
@@ -168,6 +175,7 @@ export function Sidebar({ view, onView }: { view: View; onView: (view: View) => 
     <div className="relative flex h-10 shrink-0 items-center gap-2 border-b border-edge px-3" ref={menuRef}>
       <Icon name="search" size={12} className="text-mut" />
       <input aria-label="Search tabs" placeholder="Search tabs…" value={query} onChange={(event) => setQuery(event.target.value)} className="min-w-0 flex-1 bg-transparent text-[12px] text-soft outline-none placeholder:text-dim" />
+      {settings?.experiments.sessionSweep && <button aria-label="Sweep sessions" title="Sweep: close sessions whose pull requests are merged" onClick={() => setSweepOpen(true)} className="text-mut hover:text-ink"><Icon name="broom" size={14} /></button>}
       <button aria-label="Show sessions needing attention" aria-pressed={filter === "attention"} title="Filter: needs attention" onClick={() => setFilter(filter === "all" ? "attention" : "all")} className={filter === "attention" ? "text-orange" : "text-mut hover:text-ink"}><Icon name="sliders" size={14} /></button>
       <button aria-label="New session" aria-expanded={menu} title="New session" onClick={() => setMenu(!menu)} className="text-mut hover:text-ink"><Icon name="plus" size={16} /></button>
       {menu && <div className="absolute right-2 top-9 z-50 w-48 rounded-lg border border-edge3 bg-overlay p-1 shadow-xl">
@@ -217,6 +225,7 @@ export function Sidebar({ view, onView }: { view: View; onView: (view: View) => 
     {setup === "codex" && <div className="flex items-start gap-2 px-4 py-2 text-[11px] text-mut">In Codex, open /hooks and trust Deck’s hooks.<button title="Dismiss" onClick={() => setSetup(undefined)}><Icon name="x" size={11} /></button></div>}
     {archive && <SessionArchive sessions={sessions} onResume={(session) => void resume(session)} onClose={() => setArchive(false)} />}
     {worktreesOpen && <WorktreeSweep onClose={() => setWorktreesOpen(false)} />}
+    {sweepOpen && <SessionSweep rows={liveAgentTabs} onClose={() => setSweepOpen(false)} />}
     <div className="@container relative flex h-10 shrink-0 items-center gap-1 border-t border-edge px-2">
       {footerIndex >= 0 && <span aria-hidden className="absolute bottom-2 top-2 rounded bg-card2 transition-[left] duration-200 ease-out" style={{ width: `calc((100% - 16px - ${(footerViews.length - 1) * 4}px) / ${footerViews.length})`, left: `calc(8px + (100% - 16px + 4px) / ${footerViews.length} * ${footerIndex})` }} />}
       {footerViews.map((target) => {

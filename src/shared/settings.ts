@@ -117,6 +117,13 @@ export interface NewTerminalCwdSettings {
   split: StartCwd;
 }
 
+/** Features still being tried out. Each is off until switched on in settings. */
+export interface ExperimentSettings {
+  /** The session sweep: which pull requests each live agent session opened,
+   *  with a close for the sessions whose pull requests are all merged. */
+  sessionSweep: boolean;
+}
+
 /** The page deck opens on. */
 export type DefaultView = "terminal" | "board" | "agent" | "reviews";
 
@@ -200,6 +207,7 @@ export interface DeckSettings extends WorkspaceSettings {
   /** Whether first-run setup has been through. Until then deck opens on it. */
   onboarded: boolean;
   terminalAppearance: TerminalAppearanceSettings;
+  experiments: ExperimentSettings;
 }
 
 export const defaultWorkspaceSettings: WorkspaceSettings = {
@@ -250,4 +258,5 @@ export const defaultSettings: DeckSettings = {
     cursorBlink: true,
     cursorStyle: "block",
   },
+  experiments: { sessionSweep: false },
 };

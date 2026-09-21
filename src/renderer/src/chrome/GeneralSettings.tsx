@@ -134,6 +134,12 @@ export function GeneralSettings() {
           </Field>
         </Card>
 
+        <Card title="Experiments" description="Features still being tried out. Each is off until you switch it on.">
+          <Toggle checked={settings.experiments.sessionSweep} onChange={(sessionSweep) => void update({ experiments: { ...settings.experiments, sessionSweep } })}>
+            Session sweep: a broom in the sidebar lists the pull requests each agent session opened and closes the sessions whose work is merged
+          </Toggle>
+        </Card>
+
       </div>
     </div>
   );

@@ -55,6 +55,29 @@ module.exports = async function checkSidebar({ window, run, click, wait, screens
   if ((await run('window.deck.term.list()')).length || await hasSuggestions()) throw Error('Close all should leave a clear sidebar');
   if ((await run('window.deck.sessions.list()')).length !== initial.length + 1) throw Error('Close all deleted session history');
 
+  // The sweep closes only the sessions that are idle with every PR merged and a clean tree.
+  const swept = await run('window.deck.term.create({ cwd: "/Users/demo/www/clean", agent: "claude" })');
+  const sweptToo = await run('window.deck.term.create({ cwd: "/Users/demo/www/clean-too", agent: "claude" })');
+  const kept = await run('window.deck.term.create({ cwd: "/Users/demo/www/deck", agent: "codex" })');
+  const live = (id, title, term, cwd) => ({ ...session(id, title, 60 * 1000), agent: id.startsWith('codex:') ? 'codex' : 'claude', status: 'idle', term_id: term.id, cwd });
+  await update([live('claude-swept', 'Merged work', swept, swept.cwd), live('claude-swept-too', 'More merged work', sweptToo, sweptToo.cwd), live('codex:kept', 'Open work', kept, kept.cwd)]);
+  await click('Sweep sessions');
+  await wait(300);
+  const sweepText = () => run(`(() => { const panel = document.querySelector('[role="dialog"][aria-label="Session sweep"]'); return panel ? panel.innerText : ''; })()`);
+  let sessionSweep = await sweepText();
+  for (const expected of ['2 merged and clean', 'Close all done', 'Merged work', '#21 PR 21', 'Open work', '#22 PR 22', '1 of 1 not merged']) {
+    if (!sessionSweep.includes(expected)) throw Error('Session sweep missing: ' + expected);
+  }
+  await click('Close all done');
+  const remaining = (await run('window.deck.term.list()')).map(term => term.id);
+  if (remaining.includes(swept.id) || remaining.includes(sweptToo.id) || !remaining.includes(kept.id)) throw Error('Close all done should close only the merged and clean sessions');
+  sessionSweep = await sweepText();
+  if (sessionSweep.includes('Merged work') || !sessionSweep.includes('Open work')) throw Error('Closed sessions should leave the sweep');
+  await click('Close session Open work');
+  if ((await run('window.deck.term.list()')).length) throw Error('Closing a session from the sweep should close its tab');
+  await click('Close session sweep');
+  await update([]);
+
   await click('New session');
   await click('Worktrees');
   const sweep = await run(`(() => { const panel = document.querySelector('[role="dialog"][aria-label="Worktrees"]'); return panel ? panel.innerText : ''; })()`);

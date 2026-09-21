@@ -105,6 +105,7 @@ import {
   syncBoard,
 } from "./board/board.js";
 import { listSessions, onSessionsChanged, removeSession } from "./sessions.js";
+import { invalidateSessionPullRequests, sessionPullRequests } from "./sessionPrs.js";
 import { getSettings, updateSettings } from "./settings.js";
 
 /** Which action brought a window up. Mapped to a window role by windowMode. */
@@ -373,6 +374,10 @@ app.whenReady().then(async () => {
   ipcMain.handle("sharing:current", async (_e, cwd?: string) =>
     setCurrentProject(cwd ? await repoRoot(cwd) : undefined));
   ipcMain.handle("sessions:remove", (_e, id: string) => removeSession(id));
+  ipcMain.handle("sessions:pullRequests", (_e, id: string, fresh?: boolean) => {
+    if (fresh) invalidateSessionPullRequests();
+    return sessionPullRequests(id);
+  });
   ipcMain.handle("files:list", (_e, root: string, directory?: string) =>
     listFiles(root, directory),
   );
