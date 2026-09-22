@@ -1,4 +1,4 @@
-import { sessionKey, type Agent } from "../shared/agents.js";
+import { promptTitle, sessionKey, type Agent } from "../shared/agents.js";
 import { kvGet, kvSet, openDb } from "./db.js";
 
 // Registry of Claude Code and Codex sessions, fed by hook callbacks. Sessions
@@ -211,7 +211,7 @@ export function applyHook(payload: HookPayload, termId: string | null, agent: Ag
   if (payload.hook_event_name === "UserPromptSubmit" && payload.prompt) {
     db.prepare(
       "UPDATE agent_sessions SET title = COALESCE(title, ?) WHERE session_id = ?",
-    ).run(payload.prompt.slice(0, 120), id);
+    ).run(promptTitle(payload.prompt), id);
     const key = ISSUE_KEY_RE.exec(payload.prompt)?.[0];
     if (key) {
       db.prepare(
@@ -230,7 +230,7 @@ export function registerAgentTerm(term: { id: string; cwd: string; agent?: Agent
   openDb().prepare(`INSERT INTO agent_sessions (session_id, agent, cwd, title, status, term_id, issue_key, workspace, started_at, updated_at)
     VALUES (?, ?, ?, ?, 'idle', ?, ?, ?, ?, ?)
     ON CONFLICT(session_id) DO UPDATE SET agent = excluded.agent, term_id = excluded.term_id, status = 'idle', updated_at = excluded.updated_at`)
-    .run(id, term.agent, term.cwd, term.prompt?.slice(0, 120) ?? null, term.id, term.issueKey ?? null, term.workspace ?? termWorkspaces.get(term.id) ?? null, Date.now(), Date.now());
+    .run(id, term.agent, term.cwd, term.prompt ? promptTitle(term.prompt) : null, term.id, term.issueKey ?? null, term.workspace ?? termWorkspaces.get(term.id) ?? null, Date.now(), Date.now());
   notify();
 }
 

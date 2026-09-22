@@ -1,6 +1,6 @@
 import { execFileSync } from "node:child_process";
 import { describe, expect, it } from "vitest";
-import { agentCommand, sessionAgent, sessionKey } from "../src/shared/agents.js";
+import { agentCommand, promptTitle, sessionAgent, sessionKey } from "../src/shared/agents.js";
 
 describe("agent commands", () => {
   it("resumes each provider using its own CLI syntax and raw id", () => {
@@ -15,5 +15,12 @@ describe("agent commands", () => {
       const output = execFileSync("/bin/sh", ["-c", `${agent}() { printf '%s\\n' "$@"; }; ${command}`], { encoding: "utf8" });
       expect(output).toBe(`--\n${prompt}\n`);
     }
+  });
+});
+
+describe("prompt titles", () => {
+  it("drops the paste wrappers Claude Code adds and keeps the pasted text", () => {
+    expect(promptTitle('worktree \n\n<pasted_content id="dab9">\nhttps://jira/INI-1\n</pasted_content>')).toBe("worktree https://jira/INI-1");
+    expect(promptTitle("x".repeat(200))).toHaveLength(120);
   });
 });

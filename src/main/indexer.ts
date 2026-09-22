@@ -2,7 +2,7 @@ import { watch, type FSWatcher } from "chokidar";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
-import { sessionKey, type Agent } from "../shared/agents.js";
+import { promptTitle, sessionKey, type Agent } from "../shared/agents.js";
 import { openDb } from "./db.js";
 import { parseTranscriptLine, type TranscriptMetadata, type TranscriptMessage } from "./transcripts.js";
 
@@ -74,7 +74,7 @@ export async function indexFile(filePath: string, agent: Agent): Promise<void> {
           started_at = MIN(COALESCE(conv_sessions.started_at, excluded.started_at), excluded.started_at),
           last_at = MAX(COALESCE(conv_sessions.last_at, 0), excluded.last_at)`)
         .run({ id, agent, project: agent === "codex" ? path.basename(meta.cwd ?? "Codex") : meta.project,
-          cwd: meta.cwd ?? null, title: title ?? rows.find((r) => r.role === "user")?.text.slice(0, 120) ?? null,
+          cwd: meta.cwd ?? null, title: title ?? (promptTitle(rows.find((r) => r.role === "user")?.text ?? "") || null),
           summary: title ?? null, first: times.length ? Math.min(...times) : stat.mtimeMs,
           last: times.length ? Math.max(...times) : stat.mtimeMs });
     }
