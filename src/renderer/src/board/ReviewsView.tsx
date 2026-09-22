@@ -9,7 +9,8 @@ import { PrScreen } from "./PrScreen.js";
 
 // The review queue: every PR waiting on the user's review, one at a time,
 // with next/previous like a mail client. Approving or requesting changes
-// moves on by itself; the PR screen underneath is the same one the board opens.
+// stays put, since merging usually follows an approval; the PR screen
+// underneath is the same one the board opens.
 
 const isTyping = (e: KeyboardEvent) => ["TEXTAREA", "INPUT", "SELECT"].includes((e.target as HTMLElement)?.tagName ?? "");
 
@@ -96,17 +97,9 @@ export function ReviewsView({ visible }: { visible: boolean }) {
 
   const onReviewed = (event: ReviewEvent) => {
     if (!current || event === "COMMENT") return;
-    const key = prKey(current);
-    setReviewed({ key, event });
+    setReviewed({ key: prKey(current), event });
     // Pick up the review so the PR reads as reviewed rather than waiting.
     void window.deck.inbox.refresh();
-    // Leave the confirmation visible for a beat, then move on. The PR keeps
-    // its place in the queue until it is merged, since an approval is not
-    // always the last the user has to do with it.
-    setTimeout(() => {
-      go(1);
-      setReviewed((r) => (r?.key === key ? undefined : r));
-    }, 900);
   };
 
   useEffect(() => {
@@ -135,7 +128,7 @@ export function ReviewsView({ visible }: { visible: boolean }) {
             <Icon name="issue" size={11} className="text-dim" /><span className="text-mut">{issue.key}</span><span className="truncate">{issue.summary}</span><span className="shrink-0 text-dim">· {issue.statusName}</span>
           </button>
         )}
-        {reviewed && <span className={`text-[11px] ${reviewed.event === "APPROVE" ? "text-green" : "text-red"}`}>{reviewed.event === "APPROVE" ? "✓ approved" : "✗ changes requested"} — next…</span>}
+        {current && reviewed?.key === prKey(current) && <span className={`text-[11px] ${reviewed.event === "APPROVE" ? "text-green" : "text-red"}`}>{reviewed.event === "APPROVE" ? "✓ approved" : "✗ changes requested"}</span>}
         <span className="ml-auto flex items-center gap-1 text-[11px] text-dim">
           <button aria-label="Previous review" title="Previous (p)" disabled={position <= 0} onClick={() => go(-1)} className="rounded px-1.5 py-0.5 hover:bg-card2 hover:text-ink disabled:opacity-30">‹ prev</button>
           <button aria-label="Next review" title="Next (n)" disabled={position < 0 || position >= queue.length - 1} onClick={() => go(1)} className="rounded px-1.5 py-0.5 hover:bg-card2 hover:text-ink disabled:opacity-30">next ›</button>
