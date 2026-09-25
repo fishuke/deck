@@ -1,4 +1,4 @@
-import { boardProviderLabels } from "../../../shared/board.js";
+import { boardProviderLabels, parseJiraUrl } from "../../../shared/board.js";
 import type { BoardProviderKind, DeckSettings } from "../../../shared/settings.js";
 import { control, Field } from "./settingsUi.js";
 
@@ -19,12 +19,12 @@ const CONNECTIONS: Record<BoardProviderKind, Connection> = {
   jira: {
     block: "jira",
     fields: [
-      ["baseUrl", "Base URL", "https://yourorg.atlassian.net"],
+      ["baseUrl", "Base URL", "yourorg.atlassian.net, or paste your board link"],
       ["email", "Email", "you@example.com"],
       ["apiToken", "API token", ""],
       ["boardId", "Board id", "25"],
     ],
-    help: "The token comes from your Atlassian account. The board id is the number in your board's URL.",
+    help: "The token comes from your Atlassian account. Paste your board's link as the base URL and the board id is filled in from it.",
     tokenPage: "https://id.atlassian.com/manage-profile/security/api-tokens",
   },
   linear: {
@@ -77,12 +77,19 @@ export function BoardConnectionFields({ settings, onChange }: {
         </select>
       </Field>
       {fields.map(([field, label, placeholder]) => (
-        <Field key={`${provider}.${field}`} label={label} hint={field === "email" ? "your Atlassian account" : undefined}>
+        // Keyed on the stored value too, so a value tidied on save shows as saved.
+        <Field key={`${provider}.${field}.${values[field]}`} label={label} hint={field === "email" ? "your Atlassian account" : undefined}>
           <input type={SECRETS.has(field) ? "password" : "text"} placeholder={placeholder} className={`w-full ${control}`}
             defaultValue={values[field]}
             onBlur={(event) => {
               const value = event.target.value.trim();
-              if (value !== values[field]) onChange({ [block]: { ...values, [field]: value } });
+              const patch: Record<string, string> = { [field]: value };
+              if (provider === "jira" && field === "baseUrl") {
+                const { baseUrl, boardId } = parseJiraUrl(value);
+                patch.baseUrl = baseUrl;
+                if (boardId) patch.boardId = boardId;
+              }
+              if (Object.entries(patch).some(([key, next]) => next !== values[key])) onChange({ [block]: { ...values, ...patch } });
             }} />
         </Field>
       ))}

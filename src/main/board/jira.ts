@@ -1,4 +1,4 @@
-import { boardProviderLabels } from "../../shared/board.js";
+import { boardProviderLabels, parseJiraUrl } from "../../shared/board.js";
 import { getSettings } from "../settings.js";
 import type { BoardProvider } from "./provider.js";
 import type { BoardColumn, BoardColumnStatuses, BoardIssue, IssueHit, LinkedPullRequest, NewIssue } from "./types.js";
@@ -12,7 +12,7 @@ function config() {
 }
 
 function baseUrl(): string {
-  return config().baseUrl.replace(/\/$/, "");
+  return parseJiraUrl(config().baseUrl).baseUrl;
 }
 
 async function request<T>(path: string, body?: unknown): Promise<T> {
