@@ -38,10 +38,18 @@ export function ChangesPanel({
     setError(result.error);
   }, [cwd]);
 
-  // Refetch whenever the session progresses (each hook event bumps updated_at).
+  // Refetch whenever the session progresses (each hook event bumps updated_at),
+  // and keep polling while open so edits show up as the agent writes them.
   useEffect(() => {
     void refresh();
   }, [refresh, session?.updated_at]);
+
+  useEffect(() => {
+    const timer = setInterval(() => {
+      if (!document.hidden) void refresh();
+    }, 2000);
+    return () => clearInterval(timer);
+  }, [refresh]);
 
   const files = useMemo<FileData[]>(() => {
     if (!diffText) return [];
