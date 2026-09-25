@@ -201,9 +201,10 @@ export function BoardView() {
                 setBoard((await window.deck.board.sync()) ?? board);
                 setSyncing(false);
               }}
-              className="text-[11px] text-dim hover:text-ink"
+              title={board ? `Last synced ${new Date(board.at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}` : undefined}
+              className="rounded-md border border-edge2 bg-card px-2 py-1 text-[11px] text-body hover:border-edge3 hover:text-ink"
             >
-              {syncing ? "syncing…" : "↻ sync"}
+              {syncing ? "Syncing…" : "↻ Sync now"}
             </button>
           </div>
         }

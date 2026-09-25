@@ -130,6 +130,12 @@ export async function syncBoard(): Promise<BoardCache | undefined> {
   }
 }
 
+/** Syncs unless the board was fetched moments ago, for when the user comes
+ *  back to deck and expects what they just changed in the tracker. */
+export function syncBoardIfStale(): void {
+  if (Date.now() - (getBoardCache()?.at ?? 0) >= 30_000) void syncBoard().catch(() => {});
+}
+
 export function startBoardSync(): void {
   const tick = () => void syncBoard().catch(() => {});
   tick();

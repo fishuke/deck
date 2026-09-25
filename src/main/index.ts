@@ -103,6 +103,7 @@ import {
   onBoardSyncError,
   startBoardSync,
   syncBoard,
+  syncBoardIfStale,
 } from "./board/board.js";
 import { listSessions, onSessionsChanged, removeSession } from "./sessions.js";
 import { invalidateSessionPullRequests, sessionPullRequests } from "./sessionPrs.js";
@@ -219,6 +220,7 @@ function createWindow(role: WindowRole, from?: BrowserWindow): BrowserWindow {
   win.on("focus", () => {
     wins.set(role, win);
     win.webContents.send("window:focused");
+    syncBoardIfStale();
   });
   win.on("closed", () => {
     if (wins.get(role) !== win) return;
