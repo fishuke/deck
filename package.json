@@ -116,5 +116,10 @@
       "repo": "deck",
       "releaseType": "release"
     }
+  },
+  "overrides": {
+    "extract-zip": {
+      "yauzl": "^3.4.0"
+    }
   }
 }
