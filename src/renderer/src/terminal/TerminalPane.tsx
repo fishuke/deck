@@ -72,6 +72,13 @@ export function TerminalPane({ termId, cwd, busy, active, focused = active, onTi
         window.deck.term.input(termId, "\x15");
         return false;
       }
+      // Terminals send CR for Enter and Shift+Enter alike, so agents cannot tell
+      // them apart. ESC+CR is the sequence claude's /terminal-setup installs for
+      // editors, and what iTerm2, WezTerm, Ghostty, Kitty and Warp send natively.
+      if (event.type === "keydown" && event.key === "Enter" && event.shiftKey && !event.metaKey && !event.ctrlKey && !event.altKey) {
+        window.deck.term.input(termId, "\x1b\r");
+        return false;
+      }
       // macOptionIsMeta turns every Option combo into ESC+key, but non-US layouts
       // type symbols such as @ { } [ ] | with Option. Send those as text.
       if (event.type === "keydown" && event.altKey && !event.metaKey && !event.ctrlKey && /^[!-\/:-@\[-`{-~]$/.test(event.key)) {
