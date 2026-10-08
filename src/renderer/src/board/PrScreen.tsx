@@ -1,5 +1,6 @@
 import { useAgentChoice } from "../agents/AgentSelect.js";
 import { useEffect, useMemo, useRef, useState } from "react";
+import { isTyping } from "../lib/useKeybinds.js";
 import { parseDiff, type FileData, type ViewType } from "react-diff-view";
 import type { IssuePr, MergeMethod, PrComment, PrDetail, ReviewEvent } from "../../../main/github.js";
 import type { BoardIssue } from "../../../main/board/types.js";
@@ -44,9 +45,6 @@ const mergeLabel: Record<MergeMethod, string> = {
   squash: "Squash & merge",
   rebase: "Rebase & merge",
 };
-
-const isTyping = (e: KeyboardEvent) =>
-  ["TEXTAREA", "INPUT", "SELECT"].includes((e.target as HTMLElement)?.tagName ?? "");
 
 type Tab = "overview" | "diff";
 

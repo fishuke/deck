@@ -59,6 +59,7 @@ export function installAppMenu(): void {
         { type: "separator" },
         command("Search", "search", keybinds),
         command("Toggle Sidebar", "sidebar", keybinds),
+        command("Keyboard Shortcuts", "shortcuts", keybinds),
         { type: "separator" },
         { role: "toggleDevTools" },
       ],

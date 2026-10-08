@@ -3,7 +3,7 @@
  *  come from the physical key so ⌥3 (which types "£" on a Mac) still matches. */
 
 export type KeybindCommand =
-  | "search" | "settings" | "sidebar" | "window.new"
+  | "search" | "settings" | "shortcuts" | "sidebar" | "window.new"
   | "view.terminal" | "view.board" | "view.agent" | "view.reviews"
   | "zen" | "presentation"
   | "workspace.next" | "workspace.prev"
@@ -23,6 +23,7 @@ export interface KeybindInfo {
 export const keybindInfos: KeybindInfo[] = [
   { id: "search", label: "Search sessions, history, commands, settings, themes and repositories", group: "Workbench", default: "Meta+K" },
   { id: "settings", label: "Open settings", group: "Workbench", default: "Meta+," },
+  { id: "shortcuts", label: "Show keyboard shortcuts", group: "Workbench", default: "Meta+/" },
   { id: "sidebar", label: "Toggle sidebar", group: "Workbench", default: "Meta+B" },
   { id: "window.new", label: "New window", group: "Workbench", default: "Meta+N" },
   { id: "view.terminal", label: "Terminal page", group: "Workbench", default: "Meta+Alt+Digit1" },
