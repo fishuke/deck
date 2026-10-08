@@ -9,27 +9,30 @@ import { SERVER_PORT } from "./port.js";
 import type { ClientMessage, HostMessage, SpawnRequest, TermMeta } from "./ptyHost.js";
 import { clearTermLinks, linkTermToIssue, linkTermToWorkspace, moveTermSessions, registerAgentTerm, endTermSessions, termWorkspace, updateForegroundSession } from "./sessions.js";
 import { getSettings } from "./settings.js";
-import { workspaceOf, type WindowRole } from "../shared/settings.js";
+import { workspaceOf } from "../shared/settings.js";
 import { LegacyAgentDetector } from "./legacyAgentDetection.js";
 
-/** Role of each renderer, so terminals can be tagged with the window that
- *  opened them and, when the hotkey window keeps its own tabs, filtered. */
-const windowRoles = new WeakMap<WebContents, WindowRole>();
-export function setWindowRole(contents: WebContents, role: WindowRole): void {
-  windowRoles.set(contents, role);
+/** The tab set each renderer shows. Every window keeps its own terminals, so
+ *  each one gets its own set; the summon panel is the exception, sharing the
+ *  first window's unless it is configured to keep its own tabs. The mode is
+ *  read per call so switching it moves the panel's tabs without a restart. */
+const windowSets = new WeakMap<WebContents, string>();
+export function setWindowSet(contents: WebContents, set: string): void {
+  windowSets.set(contents, set);
 }
-export function windowRoleOf(contents: WebContents): WindowRole {
-  return windowRoles.get(contents) ?? "main";
+export function windowSetOf(contents: WebContents): string {
+  const set = windowSets.get(contents) ?? "main";
+  return set === "panel" && getSettings().windowMode !== "panel-own-tabs" ? "main" : set;
 }
-/** Terminals belong to the workspace they were opened in or moved to, and
- *  with own-tab panels to the window that opened them. Main's own record of
- *  the workspace wins over the host's: a host surviving a dev restart may
- *  predate the stamp. */
+/** Terminals belong to the workspace they were opened in or moved to, and to
+ *  the tab set of the window that opened them. Main's own record of the
+ *  workspace wins over the host's: a host surviving a dev restart may predate
+ *  the stamp. A terminal from before tab sets existed has none, and belongs to
+ *  the first window. */
 function visibleTo(contents: WebContents, meta: TermMeta): boolean {
-  const { windowMode, activeWorkspace, workspaces } = getSettings();
+  const { activeWorkspace, workspaces } = getSettings();
   if (workspaceOf(termWorkspace(meta.id) ?? meta.workspace, workspaces) !== activeWorkspace) return false;
-  if (windowMode !== "panel-own-tabs") return true;
-  return (meta.windowRole ?? "main") === windowRoleOf(contents);
+  return (meta.windowSet ?? "main") === windowSetOf(contents);
 }
 
 export type { TermMeta } from "./ptyHost.js";
@@ -64,7 +67,7 @@ export interface TermCreateOptions extends AgentLaunch {
   command?: string;
   /** Ticket this terminal was spawned for — links its agent session. */
   issueKey?: string;
-  windowRole?: WindowRole;
+  windowSet?: string;
 }
 
 function spawnRequest(opts: TermCreateOptions): SpawnRequest {
@@ -104,7 +107,7 @@ function spawnRequest(opts: TermCreateOptions): SpawnRequest {
     sessionId,
     prompt: opts.prompt,
     issueKey: opts.issueKey,
-    windowRole: opts.windowRole,
+    windowSet: opts.windowSet,
     workspace: getSettings().activeWorkspace,
   };
 }
@@ -300,7 +303,7 @@ export async function startPtyHost(): Promise<void> {
   for (const term of terms) if (term.foregroundProcess) updateForegroundSession(term);
   stopLegacyDetection = startLegacyDetection(client);
 
-  ipcMain.handle("term:create", (event, opts: TermCreateOptions = {}) => createTerm({ ...opts, windowRole: windowRoles.get(event.sender) }));
+  ipcMain.handle("term:create", (event, opts: TermCreateOptions = {}) => createTerm({ ...opts, windowSet: windowSetOf(event.sender) }));
   ipcMain.handle("term:list", async (event): Promise<TermMeta[]> => {
     const { terms } = await client!.request<"list">({ type: "list" });
     return terms.filter((meta) => visibleTo(event.sender, meta));

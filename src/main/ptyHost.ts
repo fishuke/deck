@@ -1,5 +1,4 @@
 import type { AgentLaunch } from "../shared/agents.js";
-import type { WindowRole } from "../shared/settings.js";
 // Standalone pty host. Runs detached from Electron (via ELECTRON_RUN_AS_NODE)
 // so shells survive main-process restarts in dev, window reloads and closed
 // windows. Deck's main process is a thin client over a unix socket; the
@@ -18,7 +17,7 @@ export interface TermMeta extends AgentLaunch {
   busy?: boolean;
   command?: string;
   issueKey?: string;
-  windowRole?: WindowRole;
+  windowSet?: string;
   /** Workspace the terminal was opened in; only that workspace lists it. */
   workspace?: string;
 }
@@ -30,7 +29,7 @@ export interface SpawnRequest extends AgentLaunch {
   env: Record<string, string>;
   command?: string;
   issueKey?: string;
-  windowRole?: WindowRole;
+  windowSet?: string;
   workspace?: string;
 }
 
@@ -102,7 +101,7 @@ function create(spawn: SpawnRequest): TermMeta {
     env: { ...spawn.env, DECK_TERM_ID: id },
   });
   const shell = spawn.shell.split("/").pop();
-  const meta: TermMeta = { id, cwd: spawn.cwd, foregroundProcess: proc.process, busy: proc.process !== shell, command: spawn.command, issueKey: spawn.issueKey, agent: spawn.agent, sessionId: spawn.sessionId, prompt: spawn.prompt, windowRole: spawn.windowRole, workspace: spawn.workspace };
+  const meta: TermMeta = { id, cwd: spawn.cwd, foregroundProcess: proc.process, busy: proc.process !== shell, command: spawn.command, issueKey: spawn.issueKey, agent: spawn.agent, sessionId: spawn.sessionId, prompt: spawn.prompt, windowSet: spawn.windowSet, workspace: spawn.workspace };
   const term: Term = { proc, meta, shell, chunks: [], buffered: 0 };
 
   proc.onData((data) => {
