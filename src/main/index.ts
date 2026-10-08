@@ -56,10 +56,9 @@ import { sharingSummary, setCurrentProject } from "./sharing.js";
 import { installAppMenu } from "./menu.js";
 import { listRepos, searchGithub, searchRepos } from "./providers.js";
 import {
-  setWindowRole,
+  setWindowSet,
   startPtyHost,
   stopPtyHost,
-  windowRoleOf,
 } from "./pty.js";
 import { startServer, stopServer } from "./server.js";
 import {
@@ -114,6 +113,10 @@ type EntryPoint = "hotkey" | "manual";
 type WindowRole = "main" | "panel";
 
 const wins = new Map<WindowRole, BrowserWindow>();
+/** Role is how the hotkey and tray find a window; the tab set is which
+ *  terminals it shows. Extra windows share main's role and nothing else. */
+const windowRoles = new WeakMap<BrowserWindow, WindowRole>();
+let windowSetCount = 0;
 /** Windows currently shown as a quake panel; they hide again on blur. */
 const quakeWins = new WeakSet<BrowserWindow>();
 /** Regular bounds of a window while it is docked as a quake panel, so a Dock
@@ -171,7 +174,7 @@ if (app.isPackaged) {
   fs.writeFileSync(pidFile, String(process.pid));
 }
 
-function createWindow(role: WindowRole, from?: BrowserWindow): BrowserWindow {
+function createWindow(role: WindowRole, from?: BrowserWindow, set: string = role): BrowserWindow {
   // A window opened from another one cascades down and right of it like any
   // Mac app, and starts over at the top-left of its screen when out of room.
   let bounds: Partial<Electron.Rectangle> = {};
@@ -208,7 +211,8 @@ function createWindow(role: WindowRole, from?: BrowserWindow): BrowserWindow {
   });
 
   wins.set(role, win);
-  setWindowRole(win.webContents, role);
+  windowRoles.set(win, role);
+  setWindowSet(win.webContents, set);
   win.on("ready-to-show", () => win.show());
   win.on("blur", () => {
     if (quakeWins.has(win) && getSettings().summonHideOnBlur) hideWindow(win);
@@ -225,7 +229,7 @@ function createWindow(role: WindowRole, from?: BrowserWindow): BrowserWindow {
   win.on("closed", () => {
     if (wins.get(role) !== win) return;
     const sibling = BrowserWindow.getAllWindows().find(
-      (other) => windowRoleOf(other.webContents) === role,
+      (other) => other !== win && windowRoles.get(other) === role,
     );
     if (sibling) wins.set(role, sibling);
     else wins.delete(role);
@@ -473,7 +477,9 @@ app.whenReady().then(async () => {
     (e) => BrowserWindow.fromWebContents(e.sender)?.isFullScreen() ?? false,
   );
   ipcMain.handle("window:new", (e) => {
-    createWindow("main", BrowserWindow.fromWebContents(e.sender) ?? undefined);
+    // A new window keeps its own tabs, so it starts an empty set rather than a
+    // second view of the tabs the window it was opened from already shows.
+    createWindow("main", BrowserWindow.fromWebContents(e.sender) ?? undefined, `window-${++windowSetCount}`);
   });
   ipcMain.handle("inbox:refresh", () =>
     refreshPrInbox().catch(() => getPrInbox()),
