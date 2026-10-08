@@ -2,6 +2,7 @@ import { serve, type ServerType } from "@hono/node-server";
 import { Hono } from "hono";
 import { handleMcp, type JsonRpc } from "./orchestrator.js";
 import { reviewTools } from "./review.js";
+import { addFrame, clearFrames, getFrames, parseFrame, updateFrame } from "./canvas.js";
 import { SERVER_PORT } from "./port.js";
 import { applyHook, requestReview, type HookPayload } from "./sessions.js";
 
@@ -28,6 +29,49 @@ function buildApp(): Hono {
     const note = (await c.req.text().catch(() => "")).trim();
     if (term && note) requestReview(term, note);
     return c.json({ ok: Boolean(term && note) });
+  });
+
+  // The deck-canvas skill posts a drawing for the terminal's canvas panel:
+  // JSON ({ title, format, content, ... }), or the raw drawing as the body
+  // with the format and title in the query or headers, so an svg or a page
+  // needs no escaping on the way in. The title names the tab; a title already
+  // on the canvas is replaced rather than added.
+  app.post("/api/canvas", async (c) => {
+    const term = c.req.header("x-deck-term");
+    if (!term) return c.json({ ok: false, error: "x-deck-term header missing" }, 400);
+    const isJson = (c.req.header("content-type") ?? "").includes("application/json");
+    const input = isJson
+      ? ((await c.req.json().catch(() => ({}))) as Record<string, unknown>)
+      : {
+          content: await c.req.text().catch(() => ""),
+          format: c.req.query("format") ?? c.req.header("x-deck-format"),
+          title: c.req.query("title") ?? c.req.header("x-deck-title"),
+          language: c.req.query("language") ?? c.req.header("x-deck-language"),
+          alt: c.req.query("alt") ?? c.req.header("x-deck-alt"),
+        };
+    const parsed = parseFrame(input);
+    if ("error" in parsed) return c.json({ ok: false, error: parsed.error }, 400);
+    const frames = addFrame(term, parsed.frame);
+    return c.json({ ok: true, id: parsed.frame.id, frames: frames.length });
+  });
+  app.get("/api/canvas", (c) => {
+    const term = c.req.header("x-deck-term");
+    if (!term) return c.json({ ok: false, error: "x-deck-term header missing" }, 400);
+    return c.json({ ok: true, frames: getFrames(term) });
+  });
+  // Rewrites one frame in place (a progress list the agent keeps current).
+  app.put("/api/canvas/:id", async (c) => {
+    const term = c.req.header("x-deck-term");
+    if (!term) return c.json({ ok: false, error: "x-deck-term header missing" }, 400);
+    const content = await c.req.text().catch(() => "");
+    const frames = updateFrame(term, c.req.param("id"), content);
+    return frames ? c.json({ ok: true }) : c.json({ ok: false, error: "no such frame, or empty content" }, 404);
+  });
+  app.delete("/api/canvas", (c) => {
+    const term = c.req.header("x-deck-term");
+    if (!term) return c.json({ ok: false, error: "x-deck-term header missing" }, 400);
+    clearFrames(term);
+    return c.json({ ok: true });
   });
 
   // The agent page's assistant reaches deck's tools here (MCP over HTTP with

@@ -46,6 +46,7 @@ Summon it with **⌥ Space**. Code, review and orchestrate without leaving the s
 - **Agent sessions**: launch or resume Claude Code and Codex, see live status in the sidebar, and search your local conversation history across both.
 - **Vertical tabs** with search, rename, attention filters, Git status and keyboard navigation. A single "Continue your last session" suggestion appears for activity within the last 15 minutes; older sessions stay searchable.
 - **Session sweep** (experimental, on under Settings → Experiments): a broom in the sidebar lists the pull requests each agent session opened, checks whether they merged, and closes the sessions that are idle with everything merged and nothing uncommitted.
+- **Canvas**: a panel beside the terminal where Claude shows its work while it plans and answers: a status tab with what it is working on and the next steps, mermaid charts, SVG, HTML pages, Markdown answers and todo lists you can tick, code. Every title is a tab and a reposted title replaces its tab, so nothing piles up. The `deck-canvas` skill (installed with the live-status hooks) posts to Deck, the panel opens on the first post, and <kbd>⌘⇧E</kbd> toggles it.
 - **Splits and panes**: resizable nested splits, find in terminal, export, multiline input, and a local file explorer with text editing and Markdown preview.
 - **Zen and Presentation** on every page, WebStorm style. Both go fullscreen and hide the chrome; Presentation also enlarges the terminal font and zooms the other pages by the same ratio.
 
