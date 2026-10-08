@@ -1,4 +1,4 @@
-export type TerminalAction = "find" | "clear" | "export" | "files" | "changes" | "split-right" | "split-down" | "focus" | "composer";
+export type TerminalAction = "find" | "clear" | "export" | "files" | "changes" | "canvas" | "split-right" | "split-down" | "focus" | "composer";
 const EVENT = "deck:terminal-action";
 export function terminalAction(action: TerminalAction): void {
   window.dispatchEvent(new CustomEvent(EVENT, { detail: action }));

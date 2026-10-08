@@ -27,6 +27,7 @@ import type { AskEvent, AskResult } from "../main/agentTurn.js";
 import type { ReviewDraft, ReviewPr } from "../main/review.js";
 import type { PrInbox } from "../main/prInbox.js";
 import type { AgentSession } from "../main/sessions.js";
+import type { CanvasFrame } from "../main/canvas.js";
 import type { DeckSettings } from "../shared/settings.js";
 
 const api = {
@@ -199,6 +200,16 @@ const api = {
       const listener = (_e: unknown, repo: string, number: number, drafts: ReviewDraft[]) => cb(repo, number, drafts);
       ipcRenderer.on("review:drafts", listener);
       return () => ipcRenderer.removeListener("review:drafts", listener);
+    },
+  },
+  canvas: {
+    /** The drawings an agent posted for this terminal, oldest first. */
+    get: (termId: string): Promise<CanvasFrame[]> => ipcRenderer.invoke("canvas:get", termId),
+    clear: (termId: string): Promise<CanvasFrame[]> => ipcRenderer.invoke("canvas:clear", termId),
+    onChanged: (cb: (termId: string, frames: CanvasFrame[]) => void): (() => void) => {
+      const listener = (_e: unknown, termId: string, frames: CanvasFrame[]) => cb(termId, frames);
+      ipcRenderer.on("canvas:changed", listener);
+      return () => ipcRenderer.removeListener("canvas:changed", listener);
     },
   },
   hotkey: {

@@ -60,12 +60,67 @@ message:
    not commit, push, or open the PR until the user explicitly confirms.
 `;
 
-function installReviewSkill(agent: Agent): void {
-  const dir = path.join(agentHome(agent), "skills", "deck-review");
-  const file = path.join(dir, "SKILL.md");
-  if (fs.existsSync(file) && fs.readFileSync(file, "utf8") === SKILL) return;
-  fs.mkdirSync(dir, { recursive: true });
-  fs.writeFileSync(file, SKILL);
+// A second model-invoked skill: whenever Claude plans or explains, it posts
+// a drawing to the terminal's canvas panel instead of describing it in text.
+export const CANVAS_SKILL = `---
+name: deck-canvas
+description: Draw for the user inside Deck. Use whenever you plan, propose an approach, explain a flow, an architecture, a data model, a sequence or a set of options, or want to show the user you understood them; the user is a visual thinker. Posts a mermaid chart, svg, html page, markdown or code to the Canvas panel next to the terminal. Only works inside a deck terminal ($DECK_TERM_ID set).
+---
+
+The person reading you thinks in pictures. A Canvas panel sits next to this
+terminal, and every drawing you post appears there at once. Draw first, then
+write your text.
+
+When to draw: before you present a plan (in plan mode too), when you explain
+how something works or fits together, when you compare options, when you want
+to check that you understood the person. Redraw when they correct you; frames
+stack and they can step back through earlier ones.
+
+Formats, best first:
+- \`mermaid\` for flowcharts, sequences, state machines, timelines, mind maps.
+  Fast to write and renders well.
+- \`svg\` for a designed diagram or illustration you lay out yourself: rounded
+  nodes, a palette, a stickman, icons. A 16:9 viewBox around 960x540 fits;
+  text 14px or larger; colors that read on dark and light.
+- \`html\` for anything richer: a mockup, a page, an interactive demo. A full
+  document; it runs sandboxed in the panel.
+- \`markdown\` for tables and checklists, \`code\` for a snippet (add \`language\`),
+  \`ascii\` for a tiny sketch, \`link\` to show a URL.
+
+How to post: write the drawing to a temp file, then send it with the format
+and a short title. The body is the drawing itself, so nothing needs escaping.
+
+\`\`\`bash
+cat > /tmp/deck-canvas.mmd <<'DRAWING'
+flowchart LR
+  A[Idea] --> B[Define] --> C[Design] --> D[Build]
+  D --> E[Test] --> F[Release] --> G[Observe] --> A
+DRAWING
+curl -s -m 3 -X POST "http://127.0.0.1:\${DECK_PORT:-${DEFAULT_SERVER_PORT}}/api/canvas?format=mermaid" \\
+  -H "x-deck-term: $DECK_TERM_ID" -H "x-deck-title: How software gets made" \\
+  --data-binary @/tmp/deck-canvas.mmd >/dev/null || true
+\`\`\`
+
+\`format\` is one of mermaid, svg, html, markdown, code, ascii, link. Optional
+headers: \`x-deck-language\` for code, \`x-deck-alt\` with one line saying what
+the drawing shows. \`curl -s -X DELETE .../api/canvas -H "x-deck-term: $DECK_TERM_ID"\`
+clears the canvas.
+
+Skip this silently if $DECK_TERM_ID is empty. Nothing is off limits: a
+stickman, a mock website, a timeline, a map of the codebase, a before/after.
+If a picture would help, make it, and make it look good.
+`;
+
+export const SKILLS: Record<string, string> = { "deck-review": SKILL, "deck-canvas": CANVAS_SKILL };
+
+function installSkills(agent: Agent): void {
+  for (const [name, text] of Object.entries(SKILLS)) {
+    const dir = path.join(agentHome(agent), "skills", name);
+    const file = path.join(dir, "SKILL.md");
+    if (fs.existsSync(file) && fs.readFileSync(file, "utf8") === text) continue;
+    fs.mkdirSync(dir, { recursive: true });
+    fs.writeFileSync(file, text);
+  }
 }
 
 const CODEX_EVENTS = ["SessionStart", "UserPromptSubmit", "PermissionRequest", "PreToolUse", "PostToolUse", "Stop", "Interrupt", "SessionEnd"];
@@ -79,7 +134,7 @@ function hooksPath(agent: Agent): string {
 }
 
 export function installHooks(agent: Agent = "claude"): { installed: boolean; path: string } {
-  installReviewSkill(agent);
+  installSkills(agent);
   const file = hooksPath(agent);
   const settings = fs.existsSync(file) ? JSON.parse(fs.readFileSync(file, "utf8")) : {};
   const hooks = settings.hooks ?? {};

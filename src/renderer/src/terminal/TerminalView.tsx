@@ -10,6 +10,8 @@ import { matchKeybind, resolveKeybinds } from "../../../shared/keybinds.js";
 import { useTabs } from "../store.js";
 import { Icon } from "../board/icons.js";
 import { ChangesPanel } from "./ChangesPanel.js";
+import { CanvasPanel } from "./CanvasPanel.js";
+import { useCanvas } from "../lib/useCanvas.js";
 import { TerminalPane } from "./TerminalPane.js";
 import { FileExplorer } from "./FileExplorer.js";
 import { onTerminalAction, terminalAction } from "./actions.js";
@@ -23,7 +25,7 @@ export function TerminalView({ visible }: { visible: boolean }) {
   const { mode } = useDisplayMode();
   const { tabs, activeId, ready, newTab, setTitle, setTabColor, focusTab, requestCloseTab } = useTabs();
   const sessions = useAgentSessions();
-  const [panel, setPanel] = useState<"changes" | "files">();
+  const [panel, setPanel] = useState<"changes" | "files" | "canvas">();
   const [filesVisited, setFilesVisited] = useState(false);
   const [layouts, setLayouts] = useState<PaneLayout[]>(savedLayouts);
   const [composer, setComposer] = useState(false);
@@ -40,6 +42,15 @@ export function TerminalView({ visible }: { visible: boolean }) {
   const { report } = useTips();
   const defaultAgent = settings?.defaultAgent ?? "claude";
   const needsReview = session?.status === "needs_review";
+  const canvas = useCanvas(activeId);
+  // A drawing landing for the tab in front opens the canvas: that is the
+  // moment the agent wants the person to look.
+  const seenFrames = useRef<{ termId?: string; count: number }>({ count: 0 });
+  useEffect(() => {
+    const seen = seenFrames.current;
+    if (seen.termId === activeId && canvas.length > seen.count) setPanel("canvas");
+    seenFrames.current = { termId: activeId, count: canvas.length };
+  }, [activeId, canvas.length]);
   const currentLayout = layouts.find((layout) => paneIds(layout).includes(activeId ?? ""));
   const dividers = currentLayout && mode === "normal" ? paneDividers(currentLayout) : [];
   const rects = currentLayout && mode === "normal" ? paneRects(currentLayout) : activeId ? [{ termId: activeId, left: 0, top: 0, width: 100, height: 100 }] : [];
@@ -75,6 +86,7 @@ export function TerminalView({ visible }: { visible: boolean }) {
   useEffect(() => onTerminalAction((action) => {
     if (action === "changes") setPanel((panel) => panel === "changes" ? undefined : "changes");
     if (action === "files") setPanel((panel) => panel === "files" ? undefined : "files");
+    if (action === "canvas") setPanel((panel) => panel === "canvas" ? undefined : "canvas");
     if (action === "composer") setComposer((open) => !open);
     if (action === "split-right") void split("row");
     if (action === "split-down") void split("column");
@@ -94,7 +106,7 @@ export function TerminalView({ visible }: { visible: boolean }) {
       const command = matchKeybind(keybinds, event);
       if (command === "split.right") { event.preventDefault(); void split("row"); }
       if (command === "split.down") { event.preventDefault(); void split("column"); }
-      if (command === "changes" || command === "find" || command === "composer") { event.preventDefault(); terminalAction(command); }
+      if (command === "changes" || command === "canvas" || command === "find" || command === "composer") { event.preventDefault(); terminalAction(command); }
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
@@ -159,6 +171,7 @@ export function TerminalView({ visible }: { visible: boolean }) {
         <button title={`New ${agentLabels[defaultAgent]} tab (⌘⇧N)`} onClick={() => void newTab({ agent: defaultAgent })} className="toolbar-button"><Icon name="sparkle" size={13} /></button>
         {git && <button onClick={() => terminalAction("changes")} className="flex items-center gap-1.5 rounded border border-edge2 px-2 py-0.5"><Icon name="file" size={11} /><span>{git.changedFiles}</span><span className="text-green">+{git.added}</span><span className="text-red">−{git.removed}</span></button>}
         <button onClick={() => terminalAction("files")} className={`flex items-center gap-1.5 rounded px-2 py-1 ${panel === "files" ? "bg-card2 text-soft" : "hover:text-soft"}`}><Icon name="folder" size={12} />File explorer</button>
+        <button onClick={() => terminalAction("canvas")} title="Drawings the agent posted for this tab (⌘⇧E)" className={`flex items-center gap-1.5 rounded px-2 py-1 ${panel === "canvas" ? "bg-card2 text-soft" : "hover:text-soft"}`}><Icon name="canvas" size={12} />Canvas{canvas.length > 0 && <span className="text-dim">{canvas.length}</span>}</button>
         <button onClick={() => setComposer(!composer)} className={`flex items-center gap-1.5 rounded px-2 py-1 ${composer ? "bg-card2 text-soft" : "hover:text-soft"}`}><Icon name="pencil" size={12} />Rich input <kbd className="text-dim">⌘J</kbd></button>
         <span className="ml-auto min-w-0 truncate text-dim">{shortPath(cwd)}</span>
         {git && <button onClick={() => terminalAction("changes")} className="flex items-center gap-1.5 rounded border border-edge2 px-2 py-0.5"><Icon name="branch" size={11} />{git.branch}</button>}
@@ -166,6 +179,7 @@ export function TerminalView({ visible }: { visible: boolean }) {
       </footer>
     </div>
     {panel === "changes" && <div className="terminal-side-panel workbench-chrome flex min-h-0"><ChangesPanel cwd={cwd} session={session} onClose={() => setPanel(undefined)} /></div>}
+    {panel === "canvas" && <div className="terminal-side-panel workbench-chrome flex min-h-0"><CanvasPanel termId={activeId} frames={canvas} onClose={() => setPanel(undefined)} /></div>}
     {filesVisited && <div style={panel === "files" ? undefined : { display: "none" }} className="terminal-side-panel workbench-chrome flex min-h-0"><FileExplorer cwd={cwd} onClose={() => setPanel(undefined)} /></div>}
   </div>;
 }

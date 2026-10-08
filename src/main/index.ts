@@ -106,6 +106,7 @@ import {
   syncBoardIfStale,
 } from "./board/board.js";
 import { listSessions, onSessionsChanged, removeSession } from "./sessions.js";
+import { clearFrames, getFrames, onCanvasChanged } from "./canvas.js";
 import { invalidateSessionPullRequests, sessionPullRequests } from "./sessionPrs.js";
 import { getSettings, updateSettings } from "./settings.js";
 
@@ -451,6 +452,9 @@ app.whenReady().then(async () => {
   onDraftsChanged((repo, number, drafts) =>
     broadcast("review:drafts", repo, number, drafts),
   );
+  ipcMain.handle("canvas:get", (_e, termId: string) => getFrames(termId));
+  ipcMain.handle("canvas:clear", (_e, termId: string) => clearFrames(termId));
+  onCanvasChanged((termId, frames) => broadcast("canvas:changed", termId, frames));
   startAutoFix();
   startPrInbox();
   // Registrations for worktrees whose directory is long gone are pure noise
