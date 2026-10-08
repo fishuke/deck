@@ -206,6 +206,9 @@ const api = {
     /** The drawings an agent posted for this terminal, oldest first. */
     get: (termId: string): Promise<CanvasFrame[]> => ipcRenderer.invoke("canvas:get", termId),
     clear: (termId: string): Promise<CanvasFrame[]> => ipcRenderer.invoke("canvas:clear", termId),
+    remove: (termId: string, id: string): Promise<CanvasFrame[]> => ipcRenderer.invoke("canvas:remove", termId, id),
+    /** Ticks or unticks the markdown task item on that source line of the frame. */
+    toggleTask: (termId: string, id: string, line: number): Promise<CanvasFrame[]> => ipcRenderer.invoke("canvas:toggleTask", termId, id, line),
     onChanged: (cb: (termId: string, frames: CanvasFrame[]) => void): (() => void) => {
       const listener = (_e: unknown, termId: string, frames: CanvasFrame[]) => cb(termId, frames);
       ipcRenderer.on("canvas:changed", listener);

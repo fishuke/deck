@@ -74,6 +74,7 @@ app.whenReady().then(async () => {
   if (!(await run(`document.body.innerText.includes('package.json')`))) throw Error('File explorer failed');
   await screenshot('files');
   await click('Close file explorer');
+  await require('./canvas.cjs')({ window, run, click, wait, screenshot });
   await click('Zen view');
   if (!(await run(`document.querySelector('[data-display-mode="zen"]') && document.querySelector('aside').offsetWidth === 0`))) throw Error('Zen did not hide chrome');
   if (await visiblePanes() !== 1) throw Error('Zen should focus one pane');

@@ -1,9 +1,11 @@
 import { kvGet, kvSet } from "./db.js";
 
-// The canvas: drawings an agent posts for the person to look at while it
-// plans, kept per terminal. Claude running in a deck terminal has only text,
-// so the deck-canvas skill curls a frame to /api/canvas and the terminal's
-// canvas panel renders it: a mermaid chart, an svg, a page, a table.
+// The canvas: what an agent posts for the person to look at while it plans
+// and answers, kept per terminal as tabs. Claude running in a deck terminal
+// has only text, so the deck-canvas skill curls a frame to /api/canvas and
+// the terminal's canvas panel renders it: a mermaid chart, an svg, a page, a
+// todo list. Each title is one tab; posting a title again replaces that tab,
+// so a status list stays in one place instead of piling up.
 
 export const CANVAS_FORMATS = ["mermaid", "svg", "html", "markdown", "code", "ascii", "link"] as const;
 export type CanvasFormat = (typeof CANVAS_FORMATS)[number];
@@ -18,10 +20,12 @@ export interface CanvasFrame {
   /** One line saying what the drawing shows, for places that cannot draw it. */
   alt?: string;
   createdAt: number;
+  /** When the content last changed: a tick, or the agent rewriting it. */
+  updatedAt: number;
 }
 
-/** Frames kept per terminal; older ones fall off the front. */
-export const MAX_FRAMES = 50;
+/** Tabs kept per terminal; past this the one touched longest ago goes. */
+export const MAX_FRAMES = 12;
 /** One frame's content; past this the post is refused rather than cut. */
 export const MAX_CONTENT = 2_000_000;
 
@@ -63,14 +67,52 @@ export function parseFrame(input: FrameInput, now = Date.now()): { frame: Canvas
   if (!content.trim()) return { error: "content is empty" };
   if (content.length > MAX_CONTENT) return { error: `content is longer than ${MAX_CONTENT} characters` };
   const title = typeof input.title === "string" && input.title.trim() ? input.title.trim().slice(0, 200) : format;
-  const frame: CanvasFrame = { id: `${now.toString(36)}-${Math.random().toString(36).slice(2, 8)}`, title, format, content, createdAt: now };
+  const frame: CanvasFrame = { id: `${now.toString(36)}-${Math.random().toString(36).slice(2, 8)}`, title, format, content, createdAt: now, updatedAt: now };
   if (typeof input.language === "string" && input.language.trim()) frame.language = input.language.trim().slice(0, 40);
   if (typeof input.alt === "string" && input.alt.trim()) frame.alt = input.alt.trim().slice(0, 500);
   return { frame };
 }
 
+const sameTitle = (a: string, b: string) => a.trim().toLowerCase() === b.trim().toLowerCase();
+
+/** Adds a tab, or replaces the content of the tab that already carries the
+ *  title, which keeps its id, its place and its first spelling. */
 export function addFrame(termId: string, frame: CanvasFrame): CanvasFrame[] {
-  return save(termId, [...getFrames(termId), frame].slice(-MAX_FRAMES));
+  const frames = getFrames(termId);
+  const existing = frames.find((other) => sameTitle(other.title, frame.title));
+  if (existing) {
+    return save(termId, frames.map((other) => (other === existing ? { ...frame, id: existing.id, title: existing.title, createdAt: existing.createdAt } : other)));
+  }
+  const next = [...frames, frame];
+  while (next.length > MAX_FRAMES) {
+    const oldest = next.reduce((best, other) => (other !== frame && other.updatedAt < best.updatedAt ? other : best), next.find((other) => other !== frame) ?? frame);
+    next.splice(next.indexOf(oldest), 1);
+  }
+  return save(termId, next);
+}
+
+export function removeFrame(termId: string, id: string): CanvasFrame[] {
+  const frames = getFrames(termId);
+  if (!frames.some((frame) => frame.id === id)) return frames;
+  return save(termId, frames.filter((frame) => frame.id !== id));
+}
+
+/** Rewrites one frame's content in place: the person ticking a todo item in
+ *  the panel, or the agent updating a frame rather than stacking a new one. */
+export function updateFrame(termId: string, id: string, content: string): CanvasFrame[] | undefined {
+  if (!content.trim() || content.length > MAX_CONTENT) return undefined;
+  const frames = getFrames(termId);
+  if (!frames.some((frame) => frame.id === id)) return undefined;
+  return save(termId, frames.map((frame) => (frame.id === id ? { ...frame, content, updatedAt: Date.now() } : frame)));
+}
+
+/** Flips the `[ ]` / `[x]` of a markdown task item on one source line. */
+export function toggleTask(content: string, line: number): string {
+  const lines = content.split("\n");
+  const current = lines[line - 1];
+  if (current === undefined) return content;
+  lines[line - 1] = current.replace(/^(\s*(?:[-*+]|\d+[.)])\s+\[)( |x|X)(\])/, (_m, open: string, mark: string, close: string) => `${open}${mark === " " ? "x" : " "}${close}`);
+  return lines.join("\n");
 }
 
 export function clearFrames(termId: string): CanvasFrame[] {

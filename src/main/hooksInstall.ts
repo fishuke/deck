@@ -64,51 +64,73 @@ message:
 // a drawing to the terminal's canvas panel instead of describing it in text.
 export const CANVAS_SKILL = `---
 name: deck-canvas
-description: Draw for the user inside Deck. Use whenever you plan, propose an approach, explain a flow, an architecture, a data model, a sequence or a set of options, or want to show the user you understood them; the user is a visual thinker. Posts a mermaid chart, svg, html page, markdown or code to the Canvas panel next to the terminal. Only works inside a deck terminal ($DECK_TERM_ID set).
+description: Show things on the Canvas panel next to the Deck terminal instead of only in chat. Use whenever you plan, explain a flow, an architecture or a set of options, answer a question with structure (steps, a comparison, a summary, a table), keep a todo list or a progress list for the user, or want to show you understood them; the user is a visual thinker. Posts mermaid, svg, html, markdown (with tickable todo items), code or a link. Only works inside a deck terminal ($DECK_TERM_ID set).
 ---
 
-The person reading you thinks in pictures. A Canvas panel sits next to this
-terminal, and every drawing you post appears there at once. Draw first, then
-write your text.
+The person reading you thinks in pictures and lists. A Canvas panel sits
+next to this terminal, and whatever you post appears there at once. Put the
+substance on the canvas, keep the chat text short and point at it.
 
-When to draw: before you present a plan (in plan mode too), when you explain
-how something works or fits together, when you compare options, when you want
-to check that you understood the person. Redraw when they correct you; frames
-stack and they can step back through earlier ones.
+The canvas is a set of tabs, one per title. Posting a title that is already
+there replaces that tab, so a thing that evolves (the status, the plan, the
+todo list) keeps one tab and never piles up. Use a new title only for a new
+thing. Twelve tabs at most; the one touched longest ago goes.
 
-Formats, best first:
+What goes on the canvas:
+- One short status tab titled \`Now\`: what we are working on, what is done,
+  the next steps (a few lines, task items for the steps). Post it when a
+  piece of work starts and post it again whenever the plan moves, so the
+  person always has the picture of where things stand. The panel brings the
+  tab touched last to the front.
+- A plan before you present it (in plan mode too), a flow, an architecture,
+  a data model, a sequence, options side by side.
+- An answer that has structure: steps, a comparison table, a summary, a
+  checklist, key facts. Chat gets the one-line takeaway.
+- A todo or progress list for the work at hand. Use markdown task items
+  (\`- [ ] item\`, \`- [x] done\`). The person can tick items in the panel; tick
+  them yourself as you finish by posting the list again under its title.
+- Anything that shows you understood them. Redraw under the same title when
+  they correct you.
+
+Formats:
+- \`markdown\` for answers, lists, todos, tables, summaries.
 - \`mermaid\` for flowcharts, sequences, state machines, timelines, mind maps.
-  Fast to write and renders well.
+  Prefer top-to-bottom (\`flowchart TB\`) in this narrow panel.
 - \`svg\` for a designed diagram or illustration you lay out yourself: rounded
-  nodes, a palette, a stickman, icons. A 16:9 viewBox around 960x540 fits;
-  text 14px or larger; colors that read on dark and light.
+  nodes, a palette, a stickman, icons. Portrait or square fits the panel
+  better than 16:9; text 14px or larger; colors that read on dark and light.
 - \`html\` for anything richer: a mockup, a page, an interactive demo. A full
   document; it runs sandboxed in the panel.
-- \`markdown\` for tables and checklists, \`code\` for a snippet (add \`language\`),
-  \`ascii\` for a tiny sketch, \`link\` to show a URL.
+- \`code\` for a snippet (add \`x-deck-language\`), \`ascii\` for a tiny sketch,
+  \`link\` to show a URL.
 
-How to post: write the drawing to a temp file, then send it with the format
-and a short title. The body is the drawing itself, so nothing needs escaping.
+How to post: write the content to a temp file, then send it with the format
+and a short title. The body is the content itself, so nothing needs escaping.
 
 \`\`\`bash
-cat > /tmp/deck-canvas.mmd <<'DRAWING'
-flowchart LR
-  A[Idea] --> B[Define] --> C[Design] --> D[Build]
-  D --> E[Test] --> F[Release] --> G[Observe] --> A
-DRAWING
-curl -s -m 3 -X POST "http://127.0.0.1:\${DECK_PORT:-${DEFAULT_SERVER_PORT}}/api/canvas?format=mermaid" \\
-  -H "x-deck-term: $DECK_TERM_ID" -H "x-deck-title: How software gets made" \\
-  --data-binary @/tmp/deck-canvas.mmd >/dev/null || true
+cat > /tmp/deck-canvas.md <<'CANVAS'
+## Add dark mode
+- [ ] Theme tokens for every color
+- [ ] Toggle in Settings
+- [ ] Remember the choice
+CANVAS
+curl -s -m 3 -X POST "http://127.0.0.1:\${DECK_PORT:-${DEFAULT_SERVER_PORT}}/api/canvas?format=markdown" \\
+  -H "x-deck-term: $DECK_TERM_ID" -H "x-deck-title: Dark mode plan" \\
+  --data-binary @/tmp/deck-canvas.md
 \`\`\`
 
-\`format\` is one of mermaid, svg, html, markdown, code, ascii, link. Optional
-headers: \`x-deck-language\` for code, \`x-deck-alt\` with one line saying what
-the drawing shows. \`curl -s -X DELETE .../api/canvas -H "x-deck-term: $DECK_TERM_ID"\`
-clears the canvas.
+Post the same title again to update that tab. (The reply also carries the
+tab's \`id\`; \`PUT .../api/canvas/<id>\` with new content does the same.)
+
+To see what the person ticked or what is on the canvas:
+\`curl -s "http://127.0.0.1:\${DECK_PORT:-${DEFAULT_SERVER_PORT}}/api/canvas" -H "x-deck-term: $DECK_TERM_ID"\`.
+\`curl -s -X DELETE .../api/canvas -H "x-deck-term: $DECK_TERM_ID"\` clears it.
+Optional headers: \`x-deck-language\` for code, \`x-deck-alt\` with one line
+saying what a drawing shows.
 
 Skip this silently if $DECK_TERM_ID is empty. Nothing is off limits: a
 stickman, a mock website, a timeline, a map of the codebase, a before/after.
-If a picture would help, make it, and make it look good.
+If a picture or a list would help, make it, and make it look good.
 `;
 
 export const SKILLS: Record<string, string> = { "deck-review": SKILL, "deck-canvas": CANVAS_SKILL };
