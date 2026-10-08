@@ -26,6 +26,13 @@ const icns = path.join(root, "resources/icon.icns");
 if (!existsSync(icns) || (!staleDir && !existsSync(appDir))) process.exit(0);
 
 if (staleDir) renameSync(staleDir, appDir);
+// An extract that stopped partway (yauzl 2 stalls mid-file under Node 26)
+// leaves a bundle that cannot be branded or launched; electron skips
+// re-extracting while dist/version matches, so say what to do.
+if (!existsSync(path.join(appDir, "Contents/Info.plist")) || !existsSync(path.join(appDir, "Contents/Frameworks"))) {
+  console.error(`${appDir} is incomplete; delete node_modules/electron/dist and run npm install again`);
+  process.exit(1);
+}
 const executable = `${NAME}.app/Contents/MacOS/Electron`;
 // No trailing newline: electron's index.js uses this verbatim as the path.
 writeFileSync(path.join(distDir, "..", "path.txt"), executable);
