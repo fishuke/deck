@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { isTyping } from "../lib/useKeybinds.js";
 import type { IssuePr, ReviewEvent } from "../../../main/github.js";
 import type { InboxPr } from "../../../main/prInbox.js";
 import { prKey } from "../../../shared/prs.js";
@@ -11,8 +12,6 @@ import { PrScreen } from "./PrScreen.js";
 // with next/previous like a mail client. Approving or requesting changes
 // stays put, since merging usually follows an approval; the PR screen
 // underneath is the same one the board opens.
-
-const isTyping = (e: KeyboardEvent) => ["TEXTAREA", "INPUT", "SELECT"].includes((e.target as HTMLElement)?.tagName ?? "");
 
 const toIssuePr = (pr: InboxPr): IssuePr => ({ repo: pr.repo, number: pr.number, title: pr.title, state: "OPEN", isDraft: pr.isDraft, url: pr.url, author: pr.author, updatedAt: pr.updatedAt });
 

@@ -8,12 +8,13 @@ import { BoardView } from "./board/BoardView.js";
 import { ReviewsView } from "./board/ReviewsView.js";
 import { SettingsView, type SettingsSection } from "./chrome/SettingsView.js";
 import { SettingsProvider, useSettings } from "./lib/useSettings.js";
-import { isRecordingKeys } from "./lib/useKeybinds.js";
+import { isRecordingKeys, isTyping } from "./lib/useKeybinds.js";
 import { matchKeybind, resolveKeybinds, type KeybindCommand } from "../../shared/keybinds.js";
 import { defaultSettings } from "../../shared/settings.js";
 import { fontSize as safeFontSize } from "../../shared/terminal.js";
 import { useTerminalAppearance } from "./lib/useTerminalAppearance.js";
 import { Onboarding } from "./chrome/Onboarding.js";
+import { ShortcutsOverlay } from "./chrome/ShortcutsOverlay.js";
 import { Sidebar } from "./chrome/Sidebar.js";
 import { Titlebar } from "./chrome/Titlebar.js";
 import { onOpenTerminalTab, requestNavBack } from "./lib/bus.js";
@@ -51,6 +52,7 @@ function Shell() {
   const [sidebarOpen, setSidebarOpen] = useState(() => localStorage.getItem("deck.sidebar") !== "hidden");
   const toggleSidebar = useCallback(() => setSidebarOpen((open) => { localStorage.setItem("deck.sidebar", open ? "hidden" : "visible"); return !open; }), []);
   const [searchOpen, setSearchOpen] = useState(false);
+  const [shortcutsOpen, setShortcutsOpen] = useState(false);
   const [settingsSection, setSettingsSection] = useState<SettingsSection>("appearance");
   // Pages stay mounted across switches, so replay the enter animation by hand.
   const pageRef = useRef<HTMLDivElement>(null);
@@ -135,6 +137,7 @@ function Shell() {
   // same command ids. Returns whether the command was handled.
   const runCommand = useCallback((command: KeybindCommand): boolean => {
     if (command === "search") setSearchOpen((open) => !open);
+    else if (command === "shortcuts") setShortcutsOpen((open) => !open);
     else if (command === "sidebar") toggleSidebar();
     else if (command === "settings") setView("settings");
     else if (command === "view.terminal") setView("terminal");
@@ -188,6 +191,13 @@ function Shell() {
         return;
       }
       if (searchOpen) return; // the overlay handles its own keys
+      // ? is the one bare-key shortcut in the workbench, so it waits until the
+      // keystroke is not meant for a terminal, an input or the overlay itself.
+      if (e.key === "?" && !e.metaKey && !e.ctrlKey && !e.altKey && !isTyping(e) && !shortcutsOpen) {
+        e.preventDefault();
+        setShortcutsOpen(true);
+        return;
+      }
       if (e.metaKey && !e.shiftKey && !e.altKey && /^[1-9]$/.test(e.key)) {
         const tab = tabs[Number(e.key) - 1];
         if (tab) { focusTab(tab.termId); setView("terminal"); }
@@ -198,7 +208,7 @@ function Shell() {
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [searchOpen, onboarding, tabs, focusTab, setView, keybinds, runCommand]);
+  }, [searchOpen, shortcutsOpen, onboarding, tabs, focusTab, setView, keybinds, runCommand]);
 
   return (
     <div className={`flex h-full flex-col ${mode !== "normal" ? "focus-mode" : ""}`} data-display-mode={mode}>
@@ -228,6 +238,9 @@ function Shell() {
       {view !== "agent" && <div className="workbench-chrome"><AgentDock onView={setView} /></div>}
       <WorktreeClosePrompt />
       {onboarding && <Onboarding />}
+      {shortcutsOpen && (
+        <ShortcutsOverlay onClose={() => setShortcutsOpen(false)} onSettings={() => { setShortcutsOpen(false); setSettingsSection("keybinds"); setView("settings"); }} />
+      )}
       {searchOpen && (
         <SearchOverlay onClose={() => setSearchOpen(false)} onPreview={openPreview} onView={setView} onSidebar={toggleSidebar} onSettings={(section) => { setSettingsSection(section); setView("settings"); }} />
       )}
