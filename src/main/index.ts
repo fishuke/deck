@@ -96,6 +96,7 @@ import { invalidateSweep, listLinkedWorktrees, pruneWorktrees, removeWorktree, w
 import { onPrsChanged, prsForIssue, startPrWarmer } from "./issuePrs.js";
 import {
   afterPrMerged,
+  assignIssueToMe,
   fetchBoardColumns,
   getBoardCache,
   moveIssue,
@@ -497,6 +498,7 @@ app.whenReady().then(async () => {
   ipcMain.handle("board:move", (_e, key: string, column: string) =>
     moveIssue(key, column),
   );
+  ipcMain.handle("board:assignToMe", (_e, key: string) => assignIssueToMe(key));
   ipcMain.handle("gh:prsForIssue", (_e, key: string) =>
     prsForIssue(
       key,

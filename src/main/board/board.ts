@@ -92,6 +92,20 @@ export async function moveIssue(key: string, columnName: string): Promise<BoardC
   });
 }
 
+/** Assigns an issue to the authenticated user through the provider, and
+ *  updates the cache so the card shows it before the next sync. */
+export async function assignIssueToMe(key: string): Promise<BoardCache> {
+  const issue = getBoardCache()?.issues.find((i) => i.key === key);
+  if (!issue) throw new Error(`Unknown issue ${key}`);
+  const assigned = await boardProvider().assignToMe(issue);
+  const raw = kvGet<BoardCache>(cacheKey());
+  if (!raw) throw new Error(`Unknown issue ${key}`);
+  return publish({
+    ...raw,
+    issues: raw.issues.map((i) => (i.key === key ? { ...i, ...assigned } : i)),
+  });
+}
+
 /** Runs the configured on-merge action for an issue: a move in the tracker,
  *  or a board-only move that keeps the card out of the way while the
  *  tracker's own automation is still on its way. */

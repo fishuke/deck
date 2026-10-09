@@ -126,6 +126,15 @@ async function moveIssue(issue: BoardIssue, column: BoardColumn) {
   return { statusId: stateId, statusName: column.name };
 }
 
+async function assignToMe(issue: BoardIssue) {
+  const { viewer } = await graphql<{ viewer: { id: string; name: string } }>("{ viewer { id name } }");
+  await graphql(`mutation($id: String!, $assigneeId: String!) { issueUpdate(id: $id, input: { assigneeId: $assigneeId }) { success } }`, {
+    id: issue.id,
+    assigneeId: viewer.id,
+  });
+  return { assignee: viewer.name, assigneeId: viewer.id };
+}
+
 interface Attachment {
   url: string;
   title: string;
@@ -206,6 +215,7 @@ export const linearProvider: BoardProvider = {
   fetchBoard,
   fetchColumns,
   moveIssue,
+  assignToMe,
   linkedPullRequests,
   searchIssues,
   createIssue,

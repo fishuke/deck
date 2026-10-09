@@ -15,11 +15,11 @@ function baseUrl(): string {
   return parseJiraUrl(config().baseUrl).baseUrl;
 }
 
-async function request<T>(path: string, body?: unknown): Promise<T> {
+async function request<T>(path: string, body?: unknown, method = body ? "POST" : "GET"): Promise<T> {
   const c = config();
   const auth = Buffer.from(`${c.email}:${c.apiToken}`).toString("base64");
   const res = await fetch(`${baseUrl()}${path}`, {
-    method: body ? "POST" : "GET",
+    method,
     headers: {
       Authorization: `Basic ${auth}`,
       Accept: "application/json",
@@ -30,7 +30,7 @@ async function request<T>(path: string, body?: unknown): Promise<T> {
   if (!res.ok) {
     throw new Error(`Jira ${res.status} on ${path}: ${(await res.text()).slice(0, 300)}`);
   }
-  // Transitions answer 204 with an empty body.
+  // Transitions and assignee changes answer 204 with an empty body.
   return (res.status === 204 ? undefined : await res.json()) as T;
 }
 
@@ -190,6 +190,12 @@ async function moveIssue(issue: BoardIssue, column: BoardColumn) {
   return { statusId: transition.to.id, statusName: transition.to.name };
 }
 
+async function assignToMe(issue: BoardIssue) {
+  const me = await request<{ accountId: string; displayName: string }>("/rest/api/3/myself");
+  await request(`/rest/api/3/issue/${issue.key}/assignee`, { accountId: me.accountId }, "PUT");
+  return { assignee: me.displayName, assigneeId: me.accountId };
+}
+
 /** Pull requests the GitHub-for-Jira integration attached to an issue. The
  *  detail endpoint wants the integration's instance type, which the summary
  *  reports, so this is two requests instead of a hardcoded vendor string. */
@@ -264,6 +270,7 @@ export const jiraProvider: BoardProvider = {
   fetchBoard,
   fetchColumns,
   moveIssue,
+  assignToMe,
   linkedPullRequests,
   searchIssues,
   createIssue,

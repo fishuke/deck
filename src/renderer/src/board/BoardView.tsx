@@ -356,10 +356,12 @@ export function BoardView() {
       </div>
       {selected && settings && (
         <IssuePanel
-          issue={selected}
+          issue={board?.issues.find((i) => i.key === selected.key) ?? selected}
+          myAccountId={board?.myAccountId}
           rejected={rejectedRe.test(selected.statusName)}
           onClose={() => setSelected(undefined)}
           onOpenDiff={setDiffPr}
+          onBoardChanged={setBoard}
         />
       )}
       </div>

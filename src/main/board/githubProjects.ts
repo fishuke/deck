@@ -146,6 +146,24 @@ async function moveIssue(issue: BoardIssue, column: BoardColumn) {
   return { statusId: optionId, statusName: column.name };
 }
 
+/** Adds the viewer to the issue's assignees; GitHub allows several, and
+ *  whoever is already on it stays. The card's id is the project item, so the
+ *  issue behind it is looked up first. */
+async function assignToMe(issue: BoardIssue) {
+  const data = await query<{ viewer: { id: string; login: string }; node: { content: { id: string } | null } | null }>(
+    `query($id: ID!) { viewer { id login } node(id: $id) { ... on ProjectV2Item { content { ... on Issue { id } } } } }`,
+    { id: issue.id },
+  );
+  const issueId = data.node?.content?.id;
+  if (!issueId) throw new Error(`${issue.key} is not an issue that can be assigned`);
+  await query(
+    `mutation($assignableId: ID!, $assigneeId: ID!) { addAssigneesToAssignable(input: {
+      assignableId: $assignableId, assigneeIds: [$assigneeId] }) { clientMutationId } }`,
+    { assignableId: issueId, assigneeId: data.viewer.id },
+  );
+  return { assignee: data.viewer.login, assigneeId: data.viewer.login };
+}
+
 interface PrNode {
   number: number;
   title: string;
@@ -248,6 +266,7 @@ export const githubProjectsProvider: BoardProvider = {
   fetchBoard,
   fetchColumns,
   moveIssue,
+  assignToMe,
   linkedPullRequests,
   searchIssues,
   createIssue,

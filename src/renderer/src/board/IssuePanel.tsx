@@ -2,7 +2,7 @@ import { AgentSelect, useAgentChoice } from "../agents/AgentSelect.js";
 import { useEffect, useMemo, useState } from "react";
 import type { IssuePr } from "../../../main/github.js";
 import type { RepoDir } from "../../../main/providers.js";
-import type { BoardIssue } from "../../../main/board/types.js";
+import type { BoardCache, BoardIssue } from "../../../main/board/types.js";
 import type { AgentSession } from "../../../main/sessions.js";
 import { StatusMark, statusLabels, statusTones } from "../chrome/SessionIcon.js";
 import { useTabs } from "../store.js";
@@ -15,18 +15,37 @@ const stateColor: Record<string, string> = {
 
 export interface IssuePanelProps {
   issue: BoardIssue;
+  /** The authenticated tracker account; absent on caches from older syncs. */
+  myAccountId?: string;
   rejected: boolean;
   onClose: () => void;
   onOpenDiff: (pr: IssuePr) => void;
+  onBoardChanged: (board: BoardCache) => void;
 }
 
-export function IssuePanel({ issue, rejected, onClose, onOpenDiff }: IssuePanelProps) {
+export function IssuePanel({ issue, myAccountId, rejected, onClose, onOpenDiff, onBoardChanged }: IssuePanelProps) {
   const { newTab, tabs, focusTab } = useTabs();
   const [agent, setAgent] = useAgentChoice();
   const [prs, setPrs] = useState<IssuePr[]>();
   const [repos, setRepos] = useState<RepoDir[]>([]);
   const [repoPath, setRepoPath] = useState<string>("");
   const [sessions, setSessions] = useState<AgentSession[]>([]);
+  const [assigning, setAssigning] = useState(false);
+  const [assignError, setAssignError] = useState<string>();
+
+  useEffect(() => setAssignError(undefined), [issue.key]);
+
+  const assignToMe = async () => {
+    setAssigning(true);
+    setAssignError(undefined);
+    try {
+      onBoardChanged(await window.deck.board.assignToMe(issue.key));
+    } catch (err) {
+      setAssignError(err instanceof Error ? err.message.replace(/^Error invoking.*?: /, "") : String(err));
+    } finally {
+      setAssigning(false);
+    }
+  };
 
   useEffect(() => {
     setPrs(undefined);
@@ -88,6 +107,15 @@ export function IssuePanel({ issue, rejected, onClose, onOpenDiff }: IssuePanelP
           <span className="rounded bg-card2 px-2 py-0.5 text-mut">
             {issue.assignee ?? "unassigned"}
           </span>
+          {myAccountId && issue.assigneeId !== myAccountId && (
+            <button
+              onClick={assignToMe}
+              disabled={assigning}
+              className="rounded bg-card2 px-2 py-0.5 text-accent hover:underline disabled:opacity-50"
+            >
+              {assigning ? "assigning…" : "assign to me"}
+            </button>
+          )}
           <button
             onClick={() => window.open(issue.url)}
             className="rounded bg-card2 px-2 py-0.5 text-accent hover:underline"
@@ -95,6 +123,7 @@ export function IssuePanel({ issue, rejected, onClose, onOpenDiff }: IssuePanelP
             open issue ↗
           </button>
         </div>
+        {assignError && <div className="-mt-2 text-[11px] text-red">{assignError}</div>}
 
         <div className="pt-1 text-[10px] tracking-widest text-dim">AGENTS</div>
         {linked.length === 0 && (

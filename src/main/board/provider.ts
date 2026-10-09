@@ -30,6 +30,8 @@ export interface BoardProvider {
   fetchColumns(): Promise<BoardColumnStatuses[]>;
   /** Moves an issue into a column and reports the status it landed in. */
   moveIssue(issue: BoardIssue, column: BoardColumn): Promise<{ statusId: string; statusName: string }>;
+  /** Makes the authenticated user the issue's assignee and reports who that is. */
+  assignToMe(issue: BoardIssue): Promise<{ assignee: string; assigneeId: string }>;
   /** Pull requests the tracker itself has attached to the issue. */
   linkedPullRequests(issue: BoardIssue): Promise<LinkedPullRequest[]>;
   /** Issues beyond the board, in the tracker's own query language. */
