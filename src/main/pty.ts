@@ -1,3 +1,4 @@
+import { terminalEnv } from "./ptyEnv.js";
 import { agentCommand, sessionAgent, sessionKey, type AgentLaunch } from "../shared/agents.js";
 import { app, BrowserWindow, ipcMain, type WebContents } from "electron";
 import { spawn } from "node:child_process";
@@ -72,14 +73,6 @@ function spawnRequest(opts: TermCreateOptions): SpawnRequest {
   const agent = opts.agent ?? (opts.sessionId ? sessionAgent(opts.sessionId) : opts.prompt ? getSettings().defaultAgent : undefined);
   const sessionId = opts.sessionId && agent ? sessionKey(agent, opts.sessionId) : opts.sessionId;
   const command = agent ? agentCommand({ agent, sessionId, prompt: opts.prompt }) : opts.command;
-  // Deck itself may have been launched from inside a Claude Code session
-  // (dev mode); its CLAUDE* markers would make claude in this terminal
-  // think it's a child session and disable transcript saving.
-  const cleanEnv = Object.fromEntries(
-    Object.entries(process.env).filter(
-      (entry): entry is [string, string] => !entry[0].startsWith("CLAUDE") && !["CODEX_THREAD_ID", "CODEX_INTERNAL_ORIGINATOR_OVERRIDE", "DECK_TERM_ID"].includes(entry[0]) && entry[1] !== undefined,
-    ),
-  );
   return {
     shell,
     // A command still runs inside a login shell so PATH and profile apply,
@@ -87,7 +80,7 @@ function spawnRequest(opts: TermCreateOptions): SpawnRequest {
     args: command ? ["-l", "-i", "-c", `${command}; exec ${shell} -l`] : ["-l"],
     cwd: startCwd(opts.cwd),
     env: {
-      ...cleanEnv,
+      ...terminalEnv(process.env),
       // Start from the system baseline like Terminal.app, so the login
       // shell's own profile builds PATH. Inheriting an already-built PATH
       // makes "add if missing" guards in rc files skip their prepends,

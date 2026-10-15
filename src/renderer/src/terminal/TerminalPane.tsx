@@ -3,6 +3,7 @@ import { useDisplayMode } from "../chrome/DisplayMode.js";
 import { useTerminalAppearance } from "../lib/useTerminalAppearance.js";
 import { useSettings } from "../lib/useSettings.js";
 import { chordOf, resolveKeybinds } from "../../../shared/keybinds.js";
+import { macEditingInput } from "../../../shared/terminalKeys.js";
 import { onTerminalAction } from "./actions.js";
 import { ContextBar } from "./ContextBar.js";
 import { trackTypedInput } from "../../../shared/tips.js";
@@ -67,9 +68,9 @@ export function TerminalPane({ termId, cwd, busy, active, focused = active, onTi
     term.loadAddon(new WebLinksAddon((_event, url) => window.open(url)));
     term.open(host);
     term.attachCustomKeyEventHandler((event) => {
-      // Cmd+Backspace clears the line, as in Terminal.app and iTerm2; xterm would send a single delete.
-      if (event.type === "keydown" && event.metaKey && event.key === "Backspace") {
-        window.deck.term.input(termId, "\x15");
+      const editing = macEditingInput(event);
+      if (editing !== undefined) {
+        window.deck.term.input(termId, editing);
         return false;
       }
       // macOptionIsMeta turns every Option combo into ESC+key, but non-US layouts

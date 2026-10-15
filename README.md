@@ -128,6 +128,8 @@ Install and authenticate [`claude`](https://docs.anthropic.com/en/docs/claude-co
 | <kbd>⌘⌥1</kbd> <kbd>⌘⌥2</kbd> <kbd>⌘⌥3</kbd> <kbd>⌘⌥4</kbd> | Terminal / Board / Agent / Reviews |
 | <kbd>⌘D</kbd> / <kbd>⌘⇧D</kbd> | Split right / down |
 | <kbd>⌘F</kbd> | Find in terminal |
+| <kbd>⌥←</kbd> / <kbd>⌥→</kbd> | Move by word at the prompt |
+| <kbd>⌘←</kbd> / <kbd>⌘→</kbd> / <kbd>⌘⌫</kbd> | Start of line / end of line / clear the line |
 | <kbd>⌘J</kbd> | Toggle multiline input |
 | <kbd>⌘⇧Enter</kbd> | Toggle Zen view |
 | <kbd>⌘⇧P</kbd> | Toggle Presentation view |
