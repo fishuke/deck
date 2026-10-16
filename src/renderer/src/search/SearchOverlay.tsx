@@ -3,7 +3,7 @@ import type { SettingsSection } from "../chrome/SettingsView.js";
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { SearchHit } from "../../../main/indexer.js";
 import type { GithubHit, RepoDir } from "../../../main/providers.js";
-import { useTabs } from "../store.js";
+import { runningCommand, useTabs } from "../store.js";
 import { usePaletteActions, type PaletteGroup, type PaletteItem } from "./paletteActions.js";
 
 // The ⌘K overlay from the deck design: grouped results, open sessions and
@@ -59,11 +59,11 @@ export function SearchOverlay({ onClose, onPreview, onView, onSettings, onSideba
     const conv = new Map<string, SearchHit>();
     for (const h of convHits) if (!conv.has(h.session_id)) conv.set(h.session_id, h);
     const out: PaletteGroup[] = [];
-    const liveTabs = tabs.filter((tab) => `${tab.customTitle ?? ""} ${tab.title} ${tab.cwd ?? ""} ${tab.agent ?? ""}`.toLowerCase().includes(q));
+    const liveTabs = tabs.filter((tab) => `${tab.customTitle ?? ""} ${tab.title} ${runningCommand(tab) ?? ""} ${tab.cwd ?? ""} ${tab.agent ?? ""}`.toLowerCase().includes(q));
     if (liveTabs.length) out.push({ label: "OPEN SESSIONS", items: liveTabs.slice(0, 6).map((tab) => {
       const position = tabs.indexOf(tab);
       return {
-        icon: tab.agent ? "✳" : "❯", iconColor: "text-mut", title: tab.customTitle || tab.title,
+        icon: tab.agent ? "✳" : "❯", iconColor: "text-mut", title: tab.customTitle || runningCommand(tab) || tab.title,
         meta: [tab.cwd?.replace(/^\/Users\/[^/]+/, "~"), position < 9 && `⌘${position + 1}`].filter(Boolean).join(" · "),
         open: () => { focusTab(tab.termId); onView("terminal"); },
       };

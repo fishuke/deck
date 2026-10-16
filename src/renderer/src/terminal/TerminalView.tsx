@@ -7,7 +7,7 @@ import { useAgentSessions } from "../lib/useSessions.js";
 import { shortPath, useGitSummary } from "../lib/useGitSummary.js";
 import { useSettings } from "../lib/useSettings.js";
 import { matchKeybind, resolveKeybinds } from "../../../shared/keybinds.js";
-import { useTabs } from "../store.js";
+import { runningCommand, useTabs } from "../store.js";
 import { Icon } from "../board/icons.js";
 import { ChangesPanel } from "./ChangesPanel.js";
 import { CanvasPanel } from "./CanvasPanel.js";
@@ -123,7 +123,7 @@ export function TerminalView({ visible }: { visible: boolean }) {
       <div className="workbench-chrome flex h-16 shrink-0 items-center gap-4 border-b border-edge px-4 font-sans">
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2 text-[11px] text-mut"><span className="truncate">{shortPath(cwd)}</span>{git && <><Icon name="branch" size={11} /><span>{git.branch}</span><span className="text-dim">· {git.changedFiles} changed</span></>}</div>
-          <div className="mt-1 truncate text-[13px] font-semibold text-soft">{activeTab?.customTitle || session?.title || activeTab?.agent || activeTab?.title || "Terminal"}</div>
+          <div className="mt-1 truncate text-[13px] font-semibold text-soft">{activeTab?.customTitle || session?.title || activeTab?.agent || (activeTab && runningCommand(activeTab)) || activeTab?.title || "Terminal"}</div>
         </div>
         <div className="flex items-center gap-1">
           <button title="Split right (⌘D)" aria-label="Split right" onClick={() => { report({ action: "split-button" }); void split("row"); }} className="toolbar-button"><Icon name="splitRight" size={15} /></button>
@@ -140,7 +140,7 @@ export function TerminalView({ visible }: { visible: boolean }) {
           return <div key={tab.termId} className={`absolute overflow-hidden ${rects.length > 1 ? `border ${tab.termId === activeId ? "border-edge3" : "border-edge"}` : ""}`}
             style={rect ? { left: `${rect.left}%`, top: `${rect.top}%`, width: `${rect.width}%`, height: `${rect.height}%`, display: shown ? "flex" : "none", flexDirection: "column" } : { display: "none" }}
             onMouseDown={() => { if (activeId !== tab.termId) focusTab(tab.termId); }}>
-            {rects.length > 1 && <div className="flex h-6 shrink-0 items-center gap-2 bg-panel px-3 font-sans text-[10px] text-mut"><Icon name="terminal" size={10} /><span className="truncate">{tab.customTitle || tab.title}</span><button className="ml-auto" title="Close pane" onClick={() => requestCloseTab(tab.termId)}><Icon name="x" size={10} /></button></div>}
+            {rects.length > 1 && <div className="flex h-6 shrink-0 items-center gap-2 bg-panel px-3 font-sans text-[10px] text-mut"><Icon name="terminal" size={10} /><span className="truncate">{tab.customTitle || runningCommand(tab) || tab.title}</span><button className="ml-auto" title="Close pane" onClick={() => requestCloseTab(tab.termId)}><Icon name="x" size={10} /></button></div>}
             <div className="min-h-0 flex-1"><TerminalPane termId={tab.termId} cwd={tab.cwd} busy={tab.busy} active={shown} focused={shown && tab.termId === activeId} onTitle={(title) => setTitle(tab.termId, title)} onTabColor={(color) => setTabColor(tab.termId, color)} onCommand={(command) => report({ command })} onFileDrop={() => focusTab(tab.termId)} /></div>
           </div>;
         })}

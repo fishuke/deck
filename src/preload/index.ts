@@ -277,8 +277,9 @@ const api = {
       return () => ipcRenderer.removeListener("term:data", listener);
     },
     /** Whether a program other than the shell holds the terminal. */
-    onBusy: (cb: (id: string, busy: boolean) => void): (() => void) => {
-      const listener = (_e: unknown, id: string, busy: boolean) => cb(id, busy);
+    /** Whether a program holds the terminal, and which command line it is. */
+    onBusy: (cb: (id: string, busy: boolean, command?: string) => void): (() => void) => {
+      const listener = (_e: unknown, id: string, busy: boolean, command?: string) => cb(id, busy, command);
       ipcRenderer.on("term:busy", listener);
       return () => ipcRenderer.removeListener("term:busy", listener);
     },

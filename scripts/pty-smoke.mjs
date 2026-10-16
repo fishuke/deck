@@ -50,10 +50,12 @@ try {
   const replay = await receive((message) => message.type === "attached");
   assert.ok(replay.buffer.includes(`ready:${meta.id}`));
   assert.ok(replay.buffer.includes("roundtrip"));
+  // cat took the terminal over from sh, and the host names its whole command line.
+  await receive((message) => message.type === "foreground" && message.meta.id === meta.id && message.meta.foregroundCommand === "/bin/cat");
   send({ type: "list", req: 3 });
   const restored = (await receive((message) => message.type === "list")).terms;
   assert.equal(restored.length, 1);
-  assert.deepEqual(restored[0], { ...meta, foregroundProcess: restored[0].foregroundProcess });
+  assert.deepEqual(restored[0], { ...meta, foregroundProcess: restored[0].foregroundProcess, foregroundCommand: "/bin/cat" });
   send({ type: "kill", id: meta.id });
   await receive((message) => message.type === "exit");
 

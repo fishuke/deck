@@ -9,6 +9,7 @@ import net from "node:net";
 import { randomUUID } from "node:crypto";
 import pty, { type IPty } from "node-pty";
 import { readCwds } from "./ptyCwd.js";
+import { readForegroundCommands, ttyName } from "./ptyForeground.js";
 
 export interface TermMeta extends AgentLaunch {
   id: string;
@@ -16,6 +17,8 @@ export interface TermMeta extends AgentLaunch {
   foregroundProcess?: string;
   /** A program other than the shell holds the terminal, so it is not at a prompt. */
   busy?: boolean;
+  /** Command line of that program, as typed ("caffeinate -d"); unset at a prompt. */
+  foregroundCommand?: string;
   command?: string;
   issueKey?: string;
   windowRole?: WindowRole;
@@ -62,6 +65,8 @@ interface Term {
   meta: TermMeta;
   /** Process name of the shell itself, to tell a prompt from a running program. */
   shell?: string;
+  /** The pty's device, as ps names it, to find the command holding it. */
+  tty?: string;
   chunks: string[];
   buffered: number;
 }
@@ -103,7 +108,7 @@ function create(spawn: SpawnRequest): TermMeta {
   });
   const shell = spawn.shell.split("/").pop();
   const meta: TermMeta = { id, cwd: spawn.cwd, foregroundProcess: proc.process, busy: proc.process !== shell, command: spawn.command, issueKey: spawn.issueKey, agent: spawn.agent, sessionId: spawn.sessionId, prompt: spawn.prompt, windowRole: spawn.windowRole, workspace: spawn.workspace };
-  const term: Term = { proc, meta, shell, chunks: [], buffered: 0 };
+  const term: Term = { proc, meta, shell, tty: ttyName((proc as { ptsName?: string }).ptsName ?? ""), chunks: [], buffered: 0 };
 
   proc.onData((data) => {
     term.chunks.push(data);
@@ -121,7 +126,30 @@ function create(spawn: SpawnRequest): TermMeta {
   });
 
   terms.set(id, term);
+  if (meta.busy) void refreshForegroundCommands([term]);
   return meta;
+}
+
+/** "caffeinate" for "caffeinate -d", "zsh" for "/bin/zsh -l" and for a login "-zsh". */
+function programName(command: string): string {
+  return command.split(" ")[0].split("/").pop()!.replace(/^-/, "");
+}
+
+// The process name arrives with the poll below; the full command line costs
+// a ps call, so it is read only for terminals a program holds.
+async function refreshForegroundCommands(candidates: Term[]): Promise<void> {
+  const busy = candidates.filter((term) => term.meta.busy && term.tty && terms.has(term.meta.id));
+  if (!busy.length) return;
+  const commands = await readForegroundCommands(busy.map((term) => term.tty!)).catch(() => new Map());
+  for (const term of busy) {
+    const found = commands.get(term.tty!);
+    // The shell itself answering means the program already gave the terminal
+    // back. Not told apart by pid: a shell that execs a program keeps its own.
+    const command = found && programName(found.command) !== term.shell ? found.command : undefined;
+    if (!term.meta.busy || command === term.meta.foregroundCommand) continue;
+    term.meta.foregroundCommand = command;
+    broadcast({ type: "foreground", meta: term.meta });
+  }
 }
 
 // An agent can sit at its welcome screen before its first session hook.
@@ -132,7 +160,9 @@ setInterval(() => {
     if (foregroundProcess === term.meta.foregroundProcess) continue;
     term.meta.foregroundProcess = foregroundProcess;
     term.meta.busy = foregroundProcess !== term.shell;
+    if (!term.meta.busy) delete term.meta.foregroundCommand;
     broadcast({ type: "foreground", meta: term.meta });
+    if (term.meta.busy) void refreshForegroundCommands([term]);
   }
 }, 500).unref();
 
@@ -140,6 +170,8 @@ setInterval(() => {
 // the chrome showing the folder, its branch and its diff.
 setInterval(() => {
   const live = [...terms.values()];
+  // Same program name, new command ("sleep 1; sleep 2"): catch up here.
+  void refreshForegroundCommands(live);
   void readCwds(live.map((term) => term.proc.pid)).then((cwds) => {
     for (const term of live) {
       const cwd = cwds.get(term.proc.pid);

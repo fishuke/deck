@@ -7,7 +7,7 @@ import { WorktreeSweep } from "./WorktreeSweep.js";
 import { SessionSweep } from "./SessionSweep.js";
 import { useAgentSessions } from "../lib/useSessions.js";
 import { shortPath, useGitSummary } from "../lib/useGitSummary.js";
-import { useTabs, type TermTab } from "../store.js";
+import { runningCommand, useTabs, type TermTab } from "../store.js";
 import { Icon } from "../board/icons.js";
 import { useSessionSuggestions } from "./useSessionSuggestions.js";
 import { useReviewQueue } from "../lib/reviews.js";
@@ -35,7 +35,7 @@ function SessionRow({ tab, session, index, onOpen }: { tab: TermTab; session?: A
   const cwd = session?.cwd || tab.cwd;
   const git = useGitSummary(cwd);
   const agent = session?.agent ?? tab.agent;
-  const title = tab.customTitle || session?.title || (tab.title === "shell" ? cwd?.split("/").pop() : tab.title) || "Terminal";
+  const title = tab.customTitle || session?.title || runningCommand(tab) || (tab.title === "shell" ? cwd?.split("/").pop() : tab.title) || "Terminal";
   const active = activeId === tab.termId;
   const waiting = session && ["needs_input", "needs_review"].includes(session.status);
   const tone = session ? statusTones[session.status] : undefined;

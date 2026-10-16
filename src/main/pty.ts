@@ -224,7 +224,7 @@ class PtyHostClient {
     }
     if (msg.type === "foreground") {
       updateForegroundSession(msg.meta);
-      for (const window of BrowserWindow.getAllWindows()) window.webContents.send("term:busy", msg.meta.id, msg.meta.busy ?? false);
+      for (const window of BrowserWindow.getAllWindows()) window.webContents.send("term:busy", msg.meta.id, msg.meta.busy ?? false, msg.meta.foregroundCommand);
       return;
     }
     if (msg.type === "cwd") {
