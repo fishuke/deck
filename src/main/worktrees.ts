@@ -53,14 +53,16 @@ export async function worktreeAt(rawCwd: string): Promise<Worktree | null> {
     ).split("\n");
     if (!gitDir || !commonDir || path.resolve(gitDir) === path.resolve(commonDir)) return null;
 
-    const repoRoot = path.basename(commonDir) === ".git" ? path.dirname(commonDir) : commonDir;
+    // git reports forward slashes even on Windows; resolve to native paths.
+    const common = path.resolve(commonDir);
+    const repoRoot = path.basename(common) === ".git" ? path.dirname(common) : common;
     const [root, branch, status] = await Promise.all([
       git(cwd, ["rev-parse", "--show-toplevel"]),
       git(cwd, ["branch", "--show-current"]),
       git(cwd, ["status", "--porcelain"]),
     ]);
     return {
-      path: root,
+      path: path.resolve(root),
       repo: path.basename(repoRoot),
       repoRoot,
       branch,

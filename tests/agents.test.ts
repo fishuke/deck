@@ -8,7 +8,7 @@ describe("agent commands", () => {
     expect(agentCommand({ sessionId: "abc" })).toBe("claude --resume 'abc'");
     expect(sessionAgent(sessionKey("codex", "abc"))).toBe("codex");
   });
-  it("passes multiline prompts literally through a real shell", () => {
+  it.skipIf(process.platform === "win32")("passes multiline prompts literally through a real shell", () => {
     const prompt = "-option 'quoted' \"double\" `pwd` $(pwd) $HOME\nsecond line";
     for (const agent of ["codex", "claude"] as const) {
       const command = agentCommand({ agent, prompt });
