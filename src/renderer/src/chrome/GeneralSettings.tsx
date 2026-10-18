@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { isMac } from "../../../shared/platform.js";
 import { askModels, type DeckSettings, type StartCwd } from "../../../shared/settings.js";
 import { AgentSelect } from "../agents/AgentSelect.js";
 import { Card, control, Field, Toggle } from "./settingsUi.js";
@@ -115,7 +116,7 @@ export function GeneralSettings() {
               <option value="panel-own-tabs">Separate window, its own tabs</option>
             </select>
           </Field>
-          <Toggle checked={settings.hideFromDock} onChange={(hideFromDock) => void update({ hideFromDock })}>Hide Deck from the Dock and Cmd-Tab</Toggle>
+          {isMac && <Toggle checked={settings.hideFromDock} onChange={(hideFromDock) => void update({ hideFromDock })}>Hide Deck from the Dock and Cmd-Tab</Toggle>}
           <Toggle checked={settings.showTips} onChange={(showTips) => void update({ showTips })}>Show one-off tips about shortcuts you could use</Toggle>
         </Card>
         </div>

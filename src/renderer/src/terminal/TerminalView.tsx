@@ -6,7 +6,7 @@ import { useTips } from "../tips/TipsProvider.js";
 import { useAgentSessions } from "../lib/useSessions.js";
 import { shortPath, useGitSummary } from "../lib/useGitSummary.js";
 import { useSettings } from "../lib/useSettings.js";
-import { matchKeybind, resolveKeybinds } from "../../../shared/keybinds.js";
+import { formatChord, matchKeybind, primaryHint, primaryModifier, resolveKeybinds } from "../../../shared/keybinds.js";
 import { runningCommand, useTabs } from "../store.js";
 import { Icon } from "../board/icons.js";
 import { ChangesPanel } from "./ChangesPanel.js";
@@ -39,6 +39,7 @@ export function TerminalView({ visible }: { visible: boolean }) {
   const cwd = session?.cwd || activeTab?.cwd;
   const git = useGitSummary(cwd);
   const settings = useSettings();
+  const hints = resolveKeybinds(settings?.keybinds);
   const { report } = useTips();
   const defaultAgent = settings?.defaultAgent ?? "claude";
   const needsReview = session?.status === "needs_review";
@@ -126,9 +127,9 @@ export function TerminalView({ visible }: { visible: boolean }) {
           <div className="mt-1 truncate text-[13px] font-semibold text-soft">{activeTab?.customTitle || session?.title || activeTab?.agent || (activeTab && runningCommand(activeTab)) || activeTab?.title || "Terminal"}</div>
         </div>
         <div className="flex items-center gap-1">
-          <button title="Split right (⌘D)" aria-label="Split right" onClick={() => { report({ action: "split-button" }); void split("row"); }} className="toolbar-button"><Icon name="splitRight" size={15} /></button>
-          <button title="Split down (⌘⇧D)" aria-label="Split down" onClick={() => { report({ action: "split-button" }); void split("column"); }} className="toolbar-button"><Icon name="splitDown" size={15} /></button>
-          <button title="Find in terminal (⌘F)" aria-label="Find in terminal" onClick={() => terminalAction("find")} className="toolbar-button"><Icon name="search" size={15} /></button>
+          <button title={`Split right (${formatChord(hints["split.right"])})`} aria-label="Split right" onClick={() => { report({ action: "split-button" }); void split("row"); }} className="toolbar-button"><Icon name="splitRight" size={15} /></button>
+          <button title={`Split down (${formatChord(hints["split.down"])})`} aria-label="Split down" onClick={() => { report({ action: "split-button" }); void split("column"); }} className="toolbar-button"><Icon name="splitDown" size={15} /></button>
+          <button title={`Find in terminal (${formatChord(hints.find)})`} aria-label="Find in terminal" onClick={() => terminalAction("find")} className="toolbar-button"><Icon name="search" size={15} /></button>
           <button title="Export terminal output" aria-label="Export terminal output" onClick={() => terminalAction("export")} className="toolbar-button"><Icon name="download" size={15} /></button>
         </div>
       </div>
@@ -160,19 +161,19 @@ export function TerminalView({ visible }: { visible: boolean }) {
           onPointerUp={() => { dragging.current = undefined; }}
           style={divider.direction === "row" ? { left: `calc(${divider.area.left + divider.area.width * divider.ratio}% - 3px)`, top: `${divider.area.top}%`, width: 6, height: `${divider.area.height}%`, cursor: "col-resize" } : { top: `calc(${divider.area.top + divider.area.height * divider.ratio}% - 3px)`, left: `${divider.area.left}%`, height: 6, width: `${divider.area.width}%`, cursor: "row-resize" }}
           className="absolute z-10 select-none outline-none hover:bg-edge3 focus-visible:bg-accent" />)}
-        {!tabs.length && <div className="flex h-full items-center justify-center font-sans text-xs text-dim">⌘T to open a terminal</div>}
+        {!tabs.length && <div className="flex h-full items-center justify-center font-sans text-xs text-dim">{formatChord(hints["tab.new"])} to open a terminal</div>}
       </div>
       {composer && <div className="workbench-chrome mx-4 mb-3 rounded-lg border border-edge3 bg-card px-3 py-2">
-        <textarea aria-label="Command editor" autoFocus rows={3} value={command} onChange={(event) => setCommand(event.target.value)} onKeyDown={(event) => { if (event.key === "Enter" && event.metaKey) { event.preventDefault(); submit(); } }} placeholder="Write a command or paste a multiline prompt…" className="w-full resize-y bg-transparent font-mono text-xs leading-5 text-soft outline-none placeholder:text-dim" />
-        <div className="flex items-center gap-2 font-sans text-[10px] text-dim"><span>Send to active terminal</span><button className="ml-auto text-mut" onClick={() => setComposer(false)}>Close</button><button disabled={!command.trim()} onClick={submit} className="rounded border border-edge3 px-2 py-1 text-soft disabled:opacity-30">Send ⌘↵</button></div>
+        <textarea aria-label="Command editor" autoFocus rows={3} value={command} onChange={(event) => setCommand(event.target.value)} onKeyDown={(event) => { if (event.key === "Enter" && primaryModifier(event)) { event.preventDefault(); submit(); } }} placeholder="Write a command or paste a multiline prompt…" className="w-full resize-y bg-transparent font-mono text-xs leading-5 text-soft outline-none placeholder:text-dim" />
+        <div className="flex items-center gap-2 font-sans text-[10px] text-dim"><span>Send to active terminal</span><button className="ml-auto text-mut" onClick={() => setComposer(false)}>Close</button><button disabled={!command.trim()} onClick={submit} className="rounded border border-edge3 px-2 py-1 text-soft disabled:opacity-30">Send {primaryHint}↵</button></div>
       </div>}
       <footer className="workbench-chrome flex h-10 shrink-0 items-center gap-2 border-t border-edge px-4 font-sans text-[11px] text-mut">
-        <button title="New terminal (⌘T)" onClick={() => { report({ action: "new-tab-button" }); void newTab(); }} className="toolbar-button"><Icon name="plus" size={13} /></button>
-        <button title={`New ${agentLabels[defaultAgent]} tab (⌘⇧N)`} onClick={() => void newTab({ agent: defaultAgent })} className="toolbar-button"><Icon name="sparkle" size={13} /></button>
+        <button title={`New terminal (${formatChord(hints["tab.new"])})`} onClick={() => { report({ action: "new-tab-button" }); void newTab(); }} className="toolbar-button"><Icon name="plus" size={13} /></button>
+        <button title={`New ${agentLabels[defaultAgent]} tab (${formatChord(hints["tab.newAgent"])})`} onClick={() => void newTab({ agent: defaultAgent })} className="toolbar-button"><Icon name="sparkle" size={13} /></button>
         {git && <button onClick={() => terminalAction("changes")} className="flex items-center gap-1.5 rounded border border-edge2 px-2 py-0.5"><Icon name="file" size={11} /><span>{git.changedFiles}</span><span className="text-green">+{git.added}</span><span className="text-red">−{git.removed}</span></button>}
         <button onClick={() => terminalAction("files")} className={`flex items-center gap-1.5 rounded px-2 py-1 ${panel === "files" ? "bg-card2 text-soft" : "hover:text-soft"}`}><Icon name="folder" size={12} />File explorer</button>
-        <button onClick={() => terminalAction("canvas")} title="Drawings the agent posted for this tab (⌘⇧E)" className={`flex items-center gap-1.5 rounded px-2 py-1 ${panel === "canvas" ? "bg-card2 text-soft" : "hover:text-soft"}`}><Icon name="canvas" size={12} />Canvas{canvas.length > 0 && <span className="text-dim">{canvas.length}</span>}</button>
-        <button onClick={() => setComposer(!composer)} className={`flex items-center gap-1.5 rounded px-2 py-1 ${composer ? "bg-card2 text-soft" : "hover:text-soft"}`}><Icon name="pencil" size={12} />Rich input <kbd className="text-dim">⌘J</kbd></button>
+        <button onClick={() => terminalAction("canvas")} title={`Drawings the agent posted for this tab (${formatChord(hints.canvas)})`} className={`flex items-center gap-1.5 rounded px-2 py-1 ${panel === "canvas" ? "bg-card2 text-soft" : "hover:text-soft"}`}><Icon name="canvas" size={12} />Canvas{canvas.length > 0 && <span className="text-dim">{canvas.length}</span>}</button>
+        <button onClick={() => setComposer(!composer)} className={`flex items-center gap-1.5 rounded px-2 py-1 ${composer ? "bg-card2 text-soft" : "hover:text-soft"}`}><Icon name="pencil" size={12} />Rich input <kbd className="text-dim">{formatChord(hints.composer)}</kbd></button>
         <span className="ml-auto min-w-0 truncate text-dim">{shortPath(cwd)}</span>
         {git && <button onClick={() => terminalAction("changes")} className="flex items-center gap-1.5 rounded border border-edge2 px-2 py-0.5"><Icon name="branch" size={11} />{git.branch}</button>}
         {needsReview && <button onClick={() => setPanel("changes")} className="text-orange">Needs review</button>}

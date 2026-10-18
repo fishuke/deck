@@ -1,4 +1,6 @@
 import type { View } from "../App.js";
+import { primaryHint, primaryModifier } from "../../../shared/keybinds.js";
+import { shortPath } from "../lib/useGitSummary.js";
 import type { SettingsSection } from "../chrome/SettingsView.js";
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { SearchHit } from "../../../main/indexer.js";
@@ -64,7 +66,7 @@ export function SearchOverlay({ onClose, onPreview, onView, onSettings, onSideba
       const position = tabs.indexOf(tab);
       return {
         icon: tab.agent ? "✳" : "❯", iconColor: "text-mut", title: tab.customTitle || runningCommand(tab) || tab.title,
-        meta: [tab.cwd?.replace(/^\/Users\/[^/]+/, "~"), position < 9 && `⌘${position + 1}`].filter(Boolean).join(" · "),
+        meta: [tab.cwd && shortPath(tab.cwd), position < 9 && `${primaryHint}${position + 1}`].filter(Boolean).join(" · "),
         open: () => { focusTab(tab.termId); onView("terminal"); },
       };
     }) });
@@ -132,7 +134,7 @@ export function SearchOverlay({ onClose, onPreview, onView, onSettings, onSideba
         e.preventDefault();
         const item = flat[sel];
         if (item) {
-          item.open(e.metaKey);
+          item.open(primaryModifier(e));
           onClose();
         }
       }
@@ -175,7 +177,7 @@ export function SearchOverlay({ onClose, onPreview, onView, onSettings, onSideba
                     key={`${g.label}${i}`}
                     aria-label={item.title}
                     onClick={(e) => {
-                      item.open(e.metaKey);
+                      item.open(primaryModifier(e));
                       onClose();
                     }}
                     onMouseMove={() => setSel(i)}
@@ -200,7 +202,7 @@ export function SearchOverlay({ onClose, onPreview, onView, onSettings, onSideba
         <div className="flex gap-4 border-t border-edge2 px-4.5 py-2.5 text-[10px] text-dim">
           <span>↑↓ navigate</span>
           <span>⏎ open</span>
-          <span>⌘⏎ open in new session</span>
+          <span>{primaryHint}⏎ open in new session</span>
           <span className="ml-auto">sessions · commands · settings · conversations</span>
         </div>
       </div>

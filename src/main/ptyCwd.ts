@@ -19,6 +19,17 @@ export function parseLsofCwds(output: string): Map<number, string> {
   return cwds;
 }
 
+// OSC 9;9 ("current working directory", from Windows Terminal), which the
+// PowerShell prompt deck wraps prints before every prompt.
+const OSC_CWD = /\x1b\]9;9;"?([^"\x07\x1b]+)"?(?:\x07|\x1b\\)/g;
+
+/** The last folder a chunk of terminal output reports, if any. */
+export function reportedCwd(data: string): string | undefined {
+  let cwd: string | undefined;
+  for (const match of data.matchAll(OSC_CWD)) cwd = match[1];
+  return cwd;
+}
+
 export async function readCwds(pids: number[]): Promise<Map<number, string>> {
   if (!pids.length) return new Map();
   if (process.platform !== "darwin") {

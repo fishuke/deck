@@ -18,7 +18,7 @@ export async function listFiles(root: string, directory = ""): Promise<FileEntry
   const target = await withinRoot(root, directory);
   const entries = await fs.readdir(target, { withFileTypes: true });
   return entries.filter((entry) => !entry.name.startsWith(".") && entry.name !== "node_modules")
-    .map((entry) => ({ name: entry.name, path: path.join(directory, entry.name), directory: entry.isDirectory() }))
+    .map((entry) => ({ name: entry.name, path: path.posix.join(directory, entry.name), directory: entry.isDirectory() }))
     .sort((a, b) => Number(b.directory) - Number(a.directory) || a.name.localeCompare(b.name));
 }
 

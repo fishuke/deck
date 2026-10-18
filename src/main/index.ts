@@ -110,6 +110,7 @@ import { listSessions, onSessionsChanged, removeSession } from "./sessions.js";
 import { clearFrames, getFrames, onCanvasChanged, removeFrame, toggleTask, updateFrame } from "./canvas.js";
 import { invalidateSessionPullRequests, sessionPullRequests } from "./sessionPrs.js";
 import { getSettings, updateSettings } from "./settings.js";
+import { isMac } from "../shared/platform.js";
 
 /** Which action brought a window up. Mapped to a window role by windowMode. */
 type EntryPoint = "hotkey" | "manual";
@@ -200,8 +201,11 @@ function createWindow(role: WindowRole, from?: BrowserWindow): BrowserWindow {
     minHeight: 480,
     show: false,
     backgroundColor: "#0c0c0e",
-    titleBarStyle: "hiddenInset",
-    trafficLightPosition: { x: 14, y: 14 },
+    // The titlebar is deck's own; macOS insets its traffic lights into it,
+    // Windows and Linux overlay their window controls on its right end.
+    ...(isMac
+      ? { titleBarStyle: "hiddenInset" as const, trafficLightPosition: { x: 14, y: 14 } }
+      : { titleBarStyle: "hidden" as const, titleBarOverlay: { color: "#00000000", symbolColor: "#a1a1aa", height: 44 } }),
     webPreferences: {
       preload: path.join(import.meta.dirname, "../preload/index.mjs"),
       // ESM preload scripts require an unsandboxed renderer.
@@ -273,8 +277,9 @@ function hideWindow(w: BrowserWindow): void {
   }
   quakeWins.delete(w);
   w.hide();
-  // Only leave the app when no other deck window stays visible.
-  if (BrowserWindow.getAllWindows().every((other) => !other.isVisible()))
+  // Only leave the app when no other deck window stays visible. Elsewhere
+  // hiding the window already hands focus back.
+  if (isMac && BrowserWindow.getAllWindows().every((other) => !other.isVisible()))
     app.hide();
 }
 
@@ -334,7 +339,9 @@ function applyDockVisibility(): void {
   else if (!app.dock.isVisible()) app.dock.show();
 }
 
-function createTray(): void {
+function trayImage(): Electron.NativeImage {
+  // The black template glyph would vanish on a dark Windows taskbar.
+  if (!isMac) return nativeImage.createFromPath(appIcon).resize({ width: 16, height: 16 });
   // Template images are tinted by macOS to match the menu bar theme. The @2x
   // file is attached explicitly so Retina bars get the sharp version.
   const icon = nativeImage.createFromPath(trayIcon);
@@ -343,7 +350,11 @@ function createTray(): void {
     dataURL: nativeImage.createFromPath(trayIcon2x).toDataURL(),
   });
   icon.setTemplateImage(true);
-  tray = new Tray(icon);
+  return icon;
+}
+
+function createTray(): void {
+  tray = new Tray(trayImage());
   tray.setToolTip("Deck");
   tray.on("click", () => toggleWindow("manual"));
 }

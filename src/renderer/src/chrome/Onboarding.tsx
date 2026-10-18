@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { isMac } from "../../../shared/platform.js";
 import { acceleratorOf, chordOf, formatAccelerator } from "../../../shared/keybinds.js";
 import { RECORDING_ATTRIBUTE } from "../lib/useKeybinds.js";
 import { useSettings } from "../lib/useSettings.js";
@@ -125,9 +126,9 @@ export function Onboarding() {
                 <option value="panel-own-tabs">Separate window, its own tabs</option>
               </select>
             </label>
-            <Toggle checked={settings.hideFromDock} onChange={(hideFromDock) => update({ hideFromDock })}>
+            {isMac && <Toggle checked={settings.hideFromDock} onChange={(hideFromDock) => update({ hideFromDock })}>
               Keep deck out of the Dock and ⌘-Tab — the tray and the hotkey are enough
-            </Toggle>
+            </Toggle>}
           </div>
         )}
 

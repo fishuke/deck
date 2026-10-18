@@ -20,6 +20,7 @@
     "test:pty": "npm run build && node scripts/pty-smoke.mjs",
     "demo:gif": "node scripts/readme-gif.mjs",
     "dist": "electron-vite build && electron-builder --mac --publish never",
+    "dist:win": "electron-vite build && electron-builder --win --publish never",
     "install:app": "electron-vite build && electron-builder --mac dir && node scripts/install-app.mjs"
   },
   "dependencies": {
@@ -110,6 +111,17 @@
     },
     "dmg": {
       "sign": false
+    },
+    "win": {
+      "icon": "resources/icon.png",
+      "target": [
+        {
+          "target": "nsis"
+        }
+      ]
+    },
+    "nsis": {
+      "artifactName": "${productName}-${version}-win-${arch}-setup.${ext}"
     },
     "publish": {
       "provider": "github",

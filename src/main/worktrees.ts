@@ -1,8 +1,10 @@
 import { execFile } from "node:child_process";
+import fs from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import { promisify } from "node:util";
 import { listRepos } from "./providers.js";
+import { isWindows } from "../shared/platform.js";
 
 const exec = promisify(execFile);
 
@@ -104,6 +106,17 @@ export async function pruneWorktrees(): Promise<void> {
 }
 
 async function directorySize(dir: string): Promise<number> {
+  // Windows has no du; adding up the files is slower but gets there.
+  if (isWindows) {
+    try {
+      const entries = await fs.readdir(dir, { recursive: true, withFileTypes: true });
+      const sizes = await Promise.all(entries.filter((entry) => entry.isFile())
+        .map((entry) => fs.stat(path.join(entry.parentPath, entry.name)).then((stat) => stat.size, () => 0)));
+      return sizes.reduce((total, size) => total + size, 0);
+    } catch {
+      return 0;
+    }
+  }
   try {
     const { stdout } = await exec("du", ["-sk", dir], { maxBuffer: 1024 * 1024 });
     return Number(stdout.split("\t")[0]) * 1024 || 0;

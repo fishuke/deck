@@ -1,4 +1,5 @@
 import { useAgentSessions } from "../lib/useSessions.js";
+import { defaultKeybinds, formatChord } from "../../../shared/keybinds.js";
 import { createContext, useContext, useMemo, useState, type ReactNode } from "react";
 import { Icon } from "../board/icons.js";
 import { runningCommand, useTabs } from "../store.js";
@@ -57,6 +58,6 @@ export function FocusModeBar({ view }: { view: View }) {
         <button aria-label="Next presentation session" disabled={tabs.length < 2} onClick={() => move(1)} className="px-2 py-1 hover:text-soft disabled:opacity-30">→</button>
       </>}
     </>}
-    <button onClick={() => setMode("normal")} aria-label={`Exit ${mode} view`} className="flex items-center gap-1.5 rounded border border-edge2 px-2 py-1 text-body hover:border-edge3 hover:text-ink"><Icon name="x" size={10} />Exit <kbd className="ml-1 text-[9px] text-dim">{terminal ? "esc" : mode === "zen" ? "⌘⇧⏎" : "⌘⇧P"}</kbd></button>
+    <button onClick={() => setMode("normal")} aria-label={`Exit ${mode} view`} className="flex items-center gap-1.5 rounded border border-edge2 px-2 py-1 text-body hover:border-edge3 hover:text-ink"><Icon name="x" size={10} />Exit <kbd className="ml-1 text-[9px] text-dim">{terminal ? "esc" : formatChord(mode === "zen" ? defaultKeybinds.zen : defaultKeybinds.presentation)}</kbd></button>
   </div>;
 }

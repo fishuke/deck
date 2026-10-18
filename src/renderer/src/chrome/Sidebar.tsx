@@ -1,4 +1,6 @@
 import { useEffect, useRef, useState } from "react";
+import { defaultKeybinds, formatChord, primaryHint } from "../../../shared/keybinds.js";
+import { baseName } from "../../../shared/platform.js";
 import { agentLabels, type Agent } from "../../../shared/agents.js";
 import type { AgentSession } from "../../../main/sessions.js";
 import { SessionIcon, statusLabels, statusTones } from "./SessionIcon.js";
@@ -35,7 +37,7 @@ function SessionRow({ tab, session, index, onOpen }: { tab: TermTab; session?: A
   const cwd = session?.cwd || tab.cwd;
   const git = useGitSummary(cwd);
   const agent = session?.agent ?? tab.agent;
-  const title = tab.customTitle || session?.title || runningCommand(tab) || (tab.title === "shell" ? cwd?.split("/").pop() : tab.title) || "Terminal";
+  const title = tab.customTitle || session?.title || runningCommand(tab) || (tab.title === "shell" && cwd ? baseName(cwd) : tab.title) || "Terminal";
   const active = activeId === tab.termId;
   const waiting = session && ["needs_input", "needs_review"].includes(session.status);
   const tone = session ? statusTones[session.status] : undefined;
@@ -63,7 +65,7 @@ function SessionRow({ tab, session, index, onOpen }: { tab: TermTab; session?: A
         </div>
         {waiting && tone && <div className={`mt-1 text-[10px] ${tone.text}`}>{statusLabels[session.status]}</div>}
       </div>
-      <span className="self-start pt-0.5 text-[10px] text-dim group-hover:hidden">{index < 9 ? `⌘${index + 1}` : ""}</span>
+      <span className="self-start pt-0.5 text-[10px] text-dim group-hover:hidden">{index < 9 ? `${primaryHint}${index + 1}` : ""}</span>
       <button aria-label={`Close ${title}`} title="Close session" className="hidden self-start text-mut hover:text-ink group-hover:block"
         onClick={(event) => { event.stopPropagation(); report({ action: "close-tab-button" }); requestCloseTab(tab.termId); }}><Icon name="x" size={11} /></button>
     </div>
@@ -179,7 +181,7 @@ export function Sidebar({ view, onView }: { view: View; onView: (view: View) => 
       <button aria-label="Show sessions needing attention" aria-pressed={filter === "attention"} title="Filter: needs attention" onClick={() => setFilter(filter === "all" ? "attention" : "all")} className={filter === "attention" ? "text-orange" : "text-mut hover:text-ink"}><Icon name="sliders" size={14} /></button>
       <button aria-label="New session" aria-expanded={menu} title="New session" onClick={() => setMenu(!menu)} className="text-mut hover:text-ink"><Icon name="plus" size={16} /></button>
       {menu && <div className="absolute right-2 top-9 z-50 w-48 rounded-lg border border-edge3 bg-overlay p-1 shadow-xl">
-        <button onClick={() => void launch()} className="menu-item"><Icon name="terminal" />New terminal<span className="ml-auto text-dim">⌘T</span></button>
+        <button onClick={() => void launch()} className="menu-item"><Icon name="terminal" />New terminal<span className="ml-auto text-dim">{formatChord(defaultKeybinds["tab.new"])}</span></button>
         {(["claude", "codex"] as const).map((agent) => <button key={agent} onClick={() => void launch(agent)} className="menu-item"><Icon name="sparkle" />New {agentLabels[agent]}</button>)}
         <div className="my-1 border-t border-edge2" />
         <button disabled={!tabs.length} onClick={closeAllTabs} className="menu-item disabled:opacity-40"><Icon name="x" />Close all tabs</button>
@@ -197,7 +199,7 @@ export function Sidebar({ view, onView }: { view: View; onView: (view: View) => 
         </div>
         <button aria-label={`Continue ${lastSession.title || agentLabels[lastSession.agent]}`} onClick={() => void resume(lastSession)} className="mt-3 flex w-full min-w-0 items-center gap-2 text-left">
           <SessionIcon agent={lastSession.agent} />
-          <span className="min-w-0 flex-1"><span className="block truncate text-xs text-soft" title={lastSession.title || lastSession.cwd}>{lastSession.title || lastSession.cwd.split("/").pop()}</span><span className="mt-0.5 block truncate text-[10px] text-dim">{agentLabels[lastSession.agent]} · {Math.floor((Date.now() - lastSession.updated_at) / 60_000) < 1 ? "Just now" : `${Math.floor((Date.now() - lastSession.updated_at) / 60_000)}m ago`}</span></span>
+          <span className="min-w-0 flex-1"><span className="block truncate text-xs text-soft" title={lastSession.title || lastSession.cwd}>{lastSession.title || baseName(lastSession.cwd)}</span><span className="mt-0.5 block truncate text-[10px] text-dim">{agentLabels[lastSession.agent]} · {Math.floor((Date.now() - lastSession.updated_at) / 60_000) < 1 ? "Just now" : `${Math.floor((Date.now() - lastSession.updated_at) / 60_000)}m ago`}</span></span>
           <span className="text-mut">↗</span>
         </button>
         <div className="mt-3 flex items-center gap-2 text-[10px] text-dim">
@@ -205,14 +207,14 @@ export function Sidebar({ view, onView }: { view: View; onView: (view: View) => 
           <button onClick={() => onView("search")} className="ml-auto hover:text-soft">Search history</button>
         </div>
         {showMore && recent.slice(1).map((session) => <div key={session.session_id} className="mt-2 flex items-center gap-2 border-t border-edge pt-2">
-          <button onClick={() => void resume(session)} className="min-w-0 flex-1 text-left"><span className="block truncate text-[11px] text-body" title={session.title || session.cwd}>{session.title || session.cwd.split("/").pop()}</span><span className="block truncate text-[10px] text-dim">{agentLabels[session.agent]} · {shortPath(session.cwd)}</span></button>
+          <button onClick={() => void resume(session)} className="min-w-0 flex-1 text-left"><span className="block truncate text-[11px] text-body" title={session.title || session.cwd}>{session.title || baseName(session.cwd)}</span><span className="block truncate text-[10px] text-dim">{agentLabels[session.agent]} · {shortPath(session.cwd)}</span></button>
           <button aria-label={`Dismiss ${session.title || agentLabels[session.agent]}`} onClick={() => dismissSessions([session.session_id])} className="text-dim hover:text-soft"><Icon name="x" size={11} /></button>
         </div>)}
       </section>}
       {searchResults.length > 0 && <div className="px-4 pb-1 pt-4 text-[10px] tracking-widest text-dim">OTHER SESSIONS</div>}
       {searchResults.map((session) => <button key={session.session_id} onClick={() => void resume(session)} className="flex w-full min-w-0 items-center gap-2 px-3 py-2 text-left hover:bg-card">
         <SessionIcon agent={session.agent} />
-        <span className="min-w-0 flex-1"><span className="block truncate text-xs text-body">{session.title || session.cwd.split("/").pop()}</span><span className="block truncate text-[10px] text-dim">{agentLabels[session.agent]} · {shortPath(session.cwd)}</span></span>
+        <span className="min-w-0 flex-1"><span className="block truncate text-xs text-body">{session.title || baseName(session.cwd)}</span><span className="block truncate text-[10px] text-dim">{agentLabels[session.agent]} · {shortPath(session.cwd)}</span></span>
       </button>)}
       {searching && !visibleTabs.length && !searchResults.length && <div className="p-4 text-xs text-dim">No matching sessions</div>}
 
