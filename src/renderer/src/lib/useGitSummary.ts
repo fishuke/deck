@@ -16,5 +16,5 @@ export function useGitSummary(cwd?: string) {
 }
 
 export function shortPath(cwd?: string): string {
-  return cwd?.replace(/^\/(?:Users|home)\/[^/]+/, "~") ?? "~";
+  return cwd?.replace(/^\/(?:Users|home)\/[^/]+/, "~").replace(/^[A-Za-z]:\\Users\\[^\\]+/, "~") ?? "~";
 }

@@ -92,6 +92,8 @@ The builds are not notarized with Apple yet, so macOS will refuse to open the ap
 xattr -cr /Applications/Deck.app
 ```
 
+**Windows.** Download `Deck-<version>-win-x64-setup.exe` from the same page and run it. The installer is not code-signed yet, so SmartScreen asks first: **More info → Run anyway**. Terminals run PowerShell (7 when installed, else Windows PowerShell). Shortcuts follow Windows Terminal: <kbd>Ctrl+Shift</kbd> where the Mac uses <kbd>⌘</kbd>, so <kbd>Ctrl+T</kbd>, <kbd>Ctrl+W</kbd> and <kbd>Ctrl+D</kbd> still reach the shell; <kbd>Ctrl+C</kbd> copies a selection and <kbd>Ctrl+V</kbd> pastes. Live status hooks and the canvas and review skills run `bash` and `curl`, which [Git for Windows](https://gitforwindows.org) provides. Not on Windows yet: telling a running program from the prompt (the context bar always assumes a prompt) and hiding from the taskbar.
+
 **First run.** Deck opens on a short setup for the thing it is built around: the summon hotkey. Pick the keystroke, choose whether it drops down as a quake panel over the top of the screen, and press it once to see it work. Skipping is fine, and **Settings → General → run setup again** brings it back.
 
 ## Run from source
@@ -103,7 +105,7 @@ npm install
 npm run dev
 ```
 
-**Requirements.** Node 22 or newer.
+**Requirements.** Node 22 or newer. On Windows, also the Visual Studio C++ build tools, for the native modules; `npm run dist:win` builds the installer.
 
 Install and authenticate [`claude`](https://docs.anthropic.com/en/docs/claude-code) and/or [`codex`](https://github.com/openai/codex) separately. Pick the default agent in **Settings → General**; new-session menus and PR review screens let you choose either.
 

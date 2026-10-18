@@ -1,10 +1,8 @@
-import { execFile } from "node:child_process";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
-import { promisify } from "node:util";
-
-const exec = promisify(execFile);
+import { isWindows } from "../shared/platform.js";
+import { runInUserShell } from "./userShell.js";
 
 // The runtime a folder's project actually runs on, for the terminal's context
 // bar. Resolved through a login shell so version managers (nvm, pyenv, asdf)
@@ -17,11 +15,7 @@ export interface ProjectRuntime {
   version: string;
 }
 
-/** Runs a command the way the user's own prompt would, so version managers apply. */
-async function shell(command: string, cwd: string): Promise<string> {
-  const { stdout } = await exec(process.env.SHELL ?? "/bin/zsh", ["-lc", command], { cwd, timeout: 5000 });
-  return stdout;
-}
+const shell = (command: string, cwd: string): Promise<string> => runInUserShell(command, { cwd, timeout: 5000 });
 
 function expandHome(p: string): string {
   return p.startsWith("~") ? path.join(os.homedir(), p.slice(1)) : p;
@@ -29,8 +23,9 @@ function expandHome(p: string): string {
 
 const runtimes: { marker: string; label: string; command: string }[] = [
   { marker: "package.json", label: "node", command: "node --version" },
-  { marker: "pyproject.toml", label: "python", command: "python3 --version" },
-  { marker: "requirements.txt", label: "python", command: "python3 --version" },
+  // Windows installs python without the 3.
+  { marker: "pyproject.toml", label: "python", command: isWindows ? "python --version" : "python3 --version" },
+  { marker: "requirements.txt", label: "python", command: isWindows ? "python --version" : "python3 --version" },
   { marker: "Cargo.toml", label: "rust", command: "rustc --version" },
   { marker: "go.mod", label: "go", command: "go version" },
 ];

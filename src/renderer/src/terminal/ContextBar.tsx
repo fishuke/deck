@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { shellArg } from "../../../shared/platform.js";
 import type { InstalledVersions, ProjectRuntime } from "../../../main/projectRuntime.js";
 import { shortPath, useGitSummary } from "../lib/useGitSummary.js";
 import { Icon, type IconName } from "../board/icons.js";
@@ -18,9 +19,6 @@ interface MenuItem {
   current?: boolean;
 }
 
-function quote(value: string): string {
-  return /[^\w./-]/.test(value) ? `'${value.replace(/'/g, "'\\''")}'` : value;
-}
 
 export function ContextBar({ termId, cwd, busy = false }: { termId: string; cwd?: string; busy?: boolean }) {
   const git = useGitSummary(cwd);
@@ -45,8 +43,8 @@ export function ContextBar({ termId, cwd, busy = false }: { termId: string; cwd?
 
   const items: Record<MenuKind, MenuItem[]> = {
     runtime: (versions?.versions ?? []).map((version) => ({ label: version, command: `${versions?.manager} use ${version}`, current: version === runtime?.version })),
-    folder: [{ label: "‥ parent folder", command: "cd .." }, ...folders.map((folder) => ({ label: folder, command: `cd ${quote(folder)}` }))],
-    branch: branches.map((branch) => ({ label: branch, command: `git checkout ${quote(branch)}`, current: branch === git?.branch })),
+    folder: [{ label: "‥ parent folder", command: "cd .." }, ...folders.map((folder) => ({ label: folder, command: `cd ${shellArg(folder)}` }))],
+    branch: branches.map((branch) => ({ label: branch, command: `git checkout ${shellArg(branch)}`, current: branch === git?.branch })),
   };
 
   const run = (command: string) => {

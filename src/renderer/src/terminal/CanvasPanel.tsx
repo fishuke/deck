@@ -1,4 +1,5 @@
 import mermaid from "mermaid";
+import { defaultKeybinds, formatChord } from "../../../shared/keybinds.js";
 import { useEffect, useRef, useState } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
@@ -51,7 +52,7 @@ export function CanvasPanel({ termId, frames, onClose }: { termId?: string; fram
         <span className="text-xs font-bold text-ink">canvas</span>
         <span className="min-w-0 flex-1 truncate text-[11px] text-mut">{frame?.title ?? ""}</span>
         {termId && frames.length > 0 && <button onClick={() => void window.deck.canvas.clear(termId)} title="Clear the canvas" className="text-[10px] text-dim hover:text-ink">clear</button>}
-        <button onClick={onClose} title="Close (⌘⇧E)" className="text-dim hover:text-ink">×</button>
+        <button onClick={onClose} title={`Close (${formatChord(defaultKeybinds.canvas)})`} className="text-dim hover:text-ink">×</button>
       </div>
       {frames.length > 1 && (
         <div role="tablist" aria-label="Canvas tabs" className="flex shrink-0 gap-1 overflow-x-auto border-b border-edge px-2 py-1.5 font-sans text-[11px]">

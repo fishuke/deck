@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { primaryHint } from "../../../shared/keybinds.js";
 import type { PrComment } from "../../../main/github.js";
 import type { ReviewDraft } from "../../../main/review.js";
 import { Icon } from "./icons.js";
@@ -10,7 +11,7 @@ export interface ThreadActions {
   onResolve: (threadId: string, resolved: boolean) => void;
 }
 
-/** Textarea + send button; ⌘↵ sends, Esc cancels. Shared by every composer here. */
+/** Textarea + send button; ⌘↵ (Ctrl+↵ off the Mac) sends, Esc cancels. Shared by every composer here. */
 function TextBox({
   placeholder,
   sendLabel,
@@ -66,7 +67,7 @@ function TextBox({
               : "border-accent/40 text-accent hover:border-accent"
           }`}
         >
-          {busy ? "sending…" : sendLabel} <span className="opacity-60">⌘↵</span>
+          {busy ? "sending…" : sendLabel} <span className="opacity-60">{primaryHint}↵</span>
         </button>
         {onCancel && (
           <button onClick={onCancel} className="px-2 py-1 text-[11px] text-dim hover:text-ink">

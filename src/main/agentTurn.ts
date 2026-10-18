@@ -1,10 +1,8 @@
 import { type Agent } from "../shared/agents.js";
-import { execFile, spawn } from "node:child_process";
+import { spawn } from "node:child_process";
 import { randomUUID } from "node:crypto";
-import { promisify } from "node:util";
 import { markInternalSession } from "./sessions.js";
-
-const exec = promisify(execFile);
+import { resolveCommand } from "./userShell.js";
 
 // One headless turn of a coding agent, driven by deck itself: the "Ask deck"
 // orchestrator and the PR review assistant both run through here. Built-in
@@ -54,19 +52,6 @@ export interface TurnOutcome {
   conversation: Conversation;
 }
 
-const resolvedBins = new Map<Agent, Promise<string>>();
-
-/** A packaged app inherits a bare PATH, so claude is resolved the way the
- *  user's own shell would resolve it. */
-function agentBin(agent: Agent): Promise<string> {
-  let resolved = resolvedBins.get(agent);
-  if (!resolved) {
-    resolved = exec(process.env.SHELL ?? "/bin/zsh", ["-lc", `command -v ${agent}`], { timeout: 10_000 })
-      .then(({ stdout }) => stdout.trim().split("\n").pop() || agent).catch(() => agent);
-    resolvedBins.set(agent, resolved);
-  }
-  return resolved;
-}
 
 /** Runs one turn and returns the conversation state to keep for the next. */
 export function runTurn(options: TurnOptions): Promise<TurnOutcome> {
@@ -131,13 +116,14 @@ const toolEvent = (name: string, input: unknown, server: string): AskEvent => ({
 
 async function run(args: string[], onEvent: OnEvent, agent: Agent, cwd: string, server: string): Promise<AskResult> {
   const onDelta = (text: string) => onEvent({ type: "text", text });
-  const bin = await agentBin(agent);
+  const bin = await resolveCommand(agent);
   return new Promise((resolve) => {
     // stdin is closed, not piped: claude waits three seconds for piped input
     // before giving up on it.
-    const child = spawn(bin, args, {
+    const child = spawn(bin.file, [...bin.args, ...args], {
       cwd,
       env: process.env,
+      windowsHide: true,
       stdio: ["ignore", "pipe", "pipe"],
     });
     const timer = setTimeout(() => child.kill(), TURN_TIMEOUT_MS);

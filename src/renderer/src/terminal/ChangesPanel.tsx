@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { defaultKeybinds, formatChord } from "../../../shared/keybinds.js";
 import { Diff, Hunk, parseDiff, type FileData } from "react-diff-view";
 import "react-diff-view/style/index.css";
 import type { AgentSession } from "../../../main/sessions.js";
@@ -78,7 +79,7 @@ export function ChangesPanel({
         <button onClick={() => void refresh()} title="Refresh" className="ml-auto text-dim hover:text-ink">
           ↻
         </button>
-        <button onClick={onClose} title="Close (⌘E)" className="text-dim hover:text-ink">
+        <button onClick={onClose} title={`Close (${formatChord(defaultKeybinds.changes)})`} className="text-dim hover:text-ink">
           ×
         </button>
       </div>

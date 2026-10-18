@@ -1,3 +1,5 @@
+import { shellQuote } from "./platform.js";
+
 export type Agent = "claude" | "codex";
 
 export const agentLabels: Record<Agent, string> = { claude: "Claude", codex: "Codex" };
@@ -16,9 +18,7 @@ export function promptTitle(prompt: string): string {
   return prompt.replace(/<\/?pasted_content[^>]*>/g, " ").replace(/\s+/g, " ").trim().slice(0, 120);
 }
 
-export function shellQuote(text: string): string {
-  return "'" + text.replaceAll("'", "'\"'\"'") + "'";
-}
+export { shellQuote };
 
 export interface AgentLaunch {
   agent?: Agent;

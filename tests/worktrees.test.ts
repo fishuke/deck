@@ -23,9 +23,9 @@ const git = (cwd: string, ...args: string[]) =>
   execFileSync("git", ["-C", cwd, ...args], { encoding: "utf8" }).trim();
 
 beforeAll(() => {
-  // Temp dirs on macOS live behind a symlink, and git always reports the real
-  // path, so the fixture resolves it once up front.
-  root = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), "deck-worktrees-")));
+  // Temp dirs on macOS live behind a symlink and on Windows behind an 8.3 short
+  // name, and git always reports the real path, so the fixture resolves it once.
+  root = fs.realpathSync.native(fs.mkdtempSync(path.join(os.tmpdir(), "deck-worktrees-")));
   repo = path.join(root, "api");
   tree = path.join(root, "api-feature");
   fs.mkdirSync(repo);

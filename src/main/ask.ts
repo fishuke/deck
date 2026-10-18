@@ -1,4 +1,5 @@
 import { type Agent } from "../shared/agents.js";
+import { baseName } from "../shared/platform.js";
 import { kvGet, kvSet } from "./db.js";
 import { getSettings } from "./settings.js";
 import { boardConfigured, getBoardCache } from "./board/board.js";
@@ -49,7 +50,7 @@ function ago(ts: number): string {
 }
 
 function project(cwd: string | null): string {
-  return cwd?.split("/").filter(Boolean).pop() ?? "~";
+  return (cwd && baseName(cwd)) || "~";
 }
 
 const WAITING: AgentSession["status"][] = ["needs_input", "needs_review"];

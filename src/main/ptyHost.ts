@@ -8,8 +8,9 @@ import type { WindowRole } from "../shared/settings.js";
 import net from "node:net";
 import { randomUUID } from "node:crypto";
 import pty, { type IPty } from "node-pty";
-import { readCwds } from "./ptyCwd.js";
+import { readCwds, reportedCwd } from "./ptyCwd.js";
 import { readForegroundCommands, ttyName } from "./ptyForeground.js";
+import { baseName, isWindows } from "../shared/platform.js";
 
 export interface TermMeta extends AgentLaunch {
   id: string;
@@ -106,11 +107,19 @@ function create(spawn: SpawnRequest): TermMeta {
     cwd: spawn.cwd,
     env: { ...spawn.env, DECK_TERM_ID: id },
   });
-  const shell = spawn.shell.split("/").pop();
+  // On Windows node-pty reports the terminal name, not a process, so there is
+  // no telling a prompt from a program: the shell is whatever it reports.
+  const shell = isWindows ? proc.process : baseName(spawn.shell);
   const meta: TermMeta = { id, cwd: spawn.cwd, foregroundProcess: proc.process, busy: proc.process !== shell, command: spawn.command, issueKey: spawn.issueKey, agent: spawn.agent, sessionId: spawn.sessionId, prompt: spawn.prompt, windowRole: spawn.windowRole, workspace: spawn.workspace };
   const term: Term = { proc, meta, shell, tty: ttyName((proc as { ptsName?: string }).ptsName ?? ""), chunks: [], buffered: 0 };
 
   proc.onData((data) => {
+    // PowerShell reports its folder in the output stream (see userShell.ts).
+    const cwd = isWindows ? reportedCwd(data) : undefined;
+    if (cwd && cwd !== term.meta.cwd) {
+      term.meta.cwd = cwd;
+      broadcast({ type: "cwd", id, cwd });
+    }
     term.chunks.push(data);
     term.buffered += data.length;
     // Drop whole chunks so a replay doesn't start mid escape sequence.
@@ -167,8 +176,9 @@ setInterval(() => {
 }, 500).unref();
 
 // Slower than the foreground poll: it shells out, and a cd only matters to
-// the chrome showing the folder, its branch and its diff.
-setInterval(() => {
+// the chrome showing the folder, its branch and its diff. Windows terminals
+// report their folder themselves.
+if (!isWindows) setInterval(() => {
   const live = [...terms.values()];
   // Same program name, new command ("sleep 1; sleep 2"): catch up here.
   void refreshForegroundCommands(live);
