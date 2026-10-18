@@ -87,5 +87,6 @@ try {
   clearTimeout(timeout);
   socket?.destroy();
   host.kill();
-  await rm(directory, { recursive: true, force: true });
+  // Windows keeps the directory locked briefly after the host exits.
+  await rm(directory, { recursive: true, force: true, maxRetries: 10, retryDelay: 200 });
 }
