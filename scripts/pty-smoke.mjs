@@ -60,7 +60,7 @@ try {
   send({ type: "list", req: 3 });
   const restored = (await receive((message) => message.type === "list")).terms;
   assert.equal(restored.length, 1);
-  assert.deepEqual(restored[0], { ...meta, foregroundProcess: restored[0].foregroundProcess, foregroundCommand: windows ? restored[0].foregroundCommand : "/bin/cat" });
+  assert.deepEqual(restored[0], { ...meta, foregroundProcess: restored[0].foregroundProcess, ...(windows ? {} : { foregroundCommand: "/bin/cat" }) });
   send({ type: "kill", id: meta.id });
   await receive((message) => message.type === "exit");
   if (windows) {
